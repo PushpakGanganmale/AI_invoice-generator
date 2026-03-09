@@ -6,7 +6,7 @@ import { EyeIcon, FileTextIcon } from "lucide-react";
 import StatusBadge from "../component/StatusBadge";
 import { useNavigate, useLocation } from "react-router-dom";
 
-const API_BASE = "http://localhost:4000";
+const API_BASE = "https://ai-invoice-generator-backend-91pw.onrender.com";
 
 /* normalize client object */
 function normalizeClient(raw) {

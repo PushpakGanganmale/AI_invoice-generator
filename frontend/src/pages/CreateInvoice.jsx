@@ -10,7 +10,7 @@ import {
 } from "../assets/dummyStyles";
 
 /* ---------- API BASE ---------- */
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://ai-invoice-generator-backend-91pw.onrender.com";
 
 /* ---------- storage helpers (unchanged) ---------- */
 /* ----------------- frontend-only: normalize image URLs ----------------- */

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@clerk/clerk-react"; 
 
 // --- Constants ---
-const API_BASE = "http://localhost:5000"; // Update this to your actual backend URL
+const API_BASE = "https://ai-invoice-generator-backend-91pw.onrender.com"; // Update this to your actual backend URL
 
 // --- Utility: Resolve Image URLs ---
 function resolveImageUrl(url) {
