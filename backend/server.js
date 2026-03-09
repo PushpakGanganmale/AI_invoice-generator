@@ -18,7 +18,10 @@ const port = process.env.PORT || 4000;
 
 app.use(
   cors({
-    origin: "https://invoicegenius-4ffi.onrender.com",
+    origin: [
+      "http://localhost:5173",
+      "https://invoicegenius-4ffi.onrender.com",
+    ],
     credentials: true,
   })
 );
@@ -50,6 +53,16 @@ app.use("/api/business-profile", requireAuth(), bussinessProfileRouter);
 
 app.use("/api/ai-invoices", requireAuth(), aiInvoiceRouter);
 
+/* ---------------- ERROR HANDLER ---------------- */
+
+app.use((err, req, res, next) => {
+  console.error("Server Error:", err);
+  res.status(500).json({
+    success: false,
+    message: err.message || "Internal server error",
+  });
+});
+
 /* ---------------- START SERVER ---------------- */
 
 const startServer = async () => {
@@ -57,7 +70,7 @@ const startServer = async () => {
     await connectDB();
 
     app.listen(port, () => {
-      console.log(`🚀 Server running on http://localhost:${port}`);
+      console.log(`🚀 Server running on port ${port}`);
     });
 
   } catch (err) {
