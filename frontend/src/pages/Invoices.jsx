@@ -5,7 +5,8 @@ import GeminiIcon from "../component/GeminiIcon";
 import { useNavigate } from "react-router-dom";
 import { invoicesStyles } from "../assets/dummyStyles";
 import { useAuth } from "@clerk/clerk-react";
-const API_BASE = import.meta.env.VITE_API_URL || "https://ai-invoice-generator-backend-91pw.onrender.com";
+const API_BASE =
+  import.meta.env.VITE_API_BASE || "https://invoicegenius-backend.onrender.com";
 
 /* ---------- helpers ---------- */
 /* ----------------- frontend-only: normalize image URLs ----------------- */

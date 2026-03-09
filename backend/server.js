@@ -18,7 +18,7 @@ const port = process.env.PORT || 4000;
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: "https://invoicegenius-4ffi.onrender.com",
     credentials: true,
   })
 );

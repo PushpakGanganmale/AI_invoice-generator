@@ -6,7 +6,7 @@ import { EyeIcon, FileTextIcon } from "lucide-react";
 import StatusBadge from "../component/StatusBadge";
 import { useNavigate, useLocation } from "react-router-dom";
 
-const API_BASE = "https://ai-invoice-generator-backend-91pw.onrender.com";
+const API_BASE = "https://invoicegenius-backend.onrender.com";
 
 /* normalize client object */
 function normalizeClient(raw) {
@@ -224,7 +224,7 @@ const obtainToken = useCallback(async () => {
                   <div className={`${dashboardStyles.quickActionIconContainer} ${dashboardStyles.quickActionIconGray}`}><FileTextIcon className="w-4 h-4" /></div>
                   <span className={dashboardStyles.quickActionText}>View All Invoices</span>
                 </button>
-                <button onClick={() => navigate("/app/business")} className={`${dashboardStyles.quickActionButton} ${dashboardStyles.quickActionGray}`}>
+                <button onClick={() => navigate("/app/business-profile")} className={`${dashboardStyles.quickActionButton} ${dashboardStyles.quickActionGray}`}>
                   <div className={`${dashboardStyles.quickActionIconContainer} ${dashboardStyles.quickActionIconGray}`}>
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
                   </div>

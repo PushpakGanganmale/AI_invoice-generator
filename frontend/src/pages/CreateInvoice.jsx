@@ -10,8 +10,7 @@ import {
 } from "../assets/dummyStyles";
 
 /* ---------- API BASE ---------- */
-const API_BASE = import.meta.env.VITE_API_BASE || "https://ai-invoice-generator-backend-91pw.onrender.com";
-
+const API_BASE = import.meta.env.VITE_API_BASE || "https://invoicegenius-backend.onrender.com";
 /* ---------- storage helpers (unchanged) ---------- */
 /* ----------------- frontend-only: normalize image URLs ----------------- */
 function resolveImageUrl(url) {

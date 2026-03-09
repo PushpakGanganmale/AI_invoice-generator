@@ -3,8 +3,8 @@ import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@clerk/clerk-react";
 import { invoicePreviewStyles } from "../assets/dummyStyles";
 
-const API_BASE = "https://ai-invoice-generator-backend-91pw.onrender.com";
-const PROFILE_ENDPOINT = `${API_BASE}/api/businessProfile/me`;
+const API_BASE = "https://invoicegenius-backend.onrender.com";
+const PROFILE_ENDPOINT = `${API_BASE}/api/business-profile/me`;
 const INVOICE_ENDPOINT = (id) => `${API_BASE}/api/invoices/${id}`;
 
 function resolveImageUrl(url) {

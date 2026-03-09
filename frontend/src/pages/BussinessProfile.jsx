@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@clerk/clerk-react"; 
 
 // --- Constants ---
-const API_BASE = "https://ai-invoice-generator-backend-91pw.onrender.com"; // Update this to your actual backend URL
+const API_BASE = "https://invoicegenius-backend.onrender.com"; // Update this to your actual backend URL
 
 // --- Utility: Resolve Image URLs ---
 function resolveImageUrl(url) {
@@ -123,9 +123,9 @@ export default function BusinessProfile() {
       if (files.stamp) fd.append("stampName", files.stamp);
       if (files.signature) fd.append("signatureNameMeta", files.signature);
 
-      const url = meta.profileId 
-        ? `${API_BASE}/api/businessProfile/${meta.profileId}` 
-        : `${API_BASE}/api/businessProfile`;
+     const url = meta.profileId 
+  ? `${API_BASE}/api/business-profile/${meta.profileId}` 
+  : `${API_BASE}/api/business-profile`;
       
       const res = await fetch(url, {
         method: meta.profileId ? "PUT" : "POST",
