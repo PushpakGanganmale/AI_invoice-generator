@@ -96,7 +96,7 @@ const obtainToken = useCallback(async () => {
       const raw = json?.data || [];
       const mapped = (Array.isArray(raw) ? raw : []).map((inv) => ({
         ...inv,
-        id: inv.invoiceNumber || inv._id,
+        id: inv._id,
         amount: Number(inv.total ?? inv.amount ?? 0),
         currency: (inv.currency || "INR").toUpperCase(),
         status: typeof inv.status === "string" 

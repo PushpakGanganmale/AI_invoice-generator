@@ -731,20 +731,7 @@ function handlePreview() {
     total: computeTotals(items, invoice.taxPercent).total,
   };
   // ✅ FIXED: was /app/${invoice.id}/preview
-  navigate(`/app/invoices/${invoice.id}/preview`, {
-    state: { invoice: prepared },
-  });
-}
-function handlePreview() {
-  const prepared = {
-    ...invoice,
-    items,
-    subtotal: computeTotals(items, invoice.taxPercent).subtotal,
-    tax: computeTotals(items, invoice.taxPercent).tax,
-    total: computeTotals(items, invoice.taxPercent).total,
-  };
-  // ✅ FIXED: was /app/${invoice.id}/preview
-  navigate(`/app/invoices/${invoice.id}/preview`, {
+ navigate(`/app/invoices/preview`, {
     state: { invoice: prepared },
   });
 }
