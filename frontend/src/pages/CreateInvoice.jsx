@@ -712,13 +712,16 @@ async function handleSave() {
       throw new Error(json?.message || "Failed to save invoice");
     }
 
-    const saved = json?.data || json;
+const saved = json?.data || json || {};
 
-    setInvoice((prev) => ({
-      ...prev,
-      id: saved._id || saved.id,
-      invoiceNumber: saved.invoiceNumber,
-    }));
+setInvoice((prev) => ({
+  ...prev,
+  id: saved?._id || saved?.id || prev.id,
+  invoiceNumber: saved?.invoiceNumber || prev.invoiceNumber,
+}));
+
+setItems(saved?.items || items);
+setItems(saved.items || items);
 
     setItems(saved.items || items);
 
