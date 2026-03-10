@@ -294,7 +294,14 @@ export default function InvoicesPage() {
         throw new Error(json?.message || `Failed to fetch (${res.status})`);
       }
       const json = await res.json().catch(() => null);
-      const raw = Array.isArray(json?.data) ? json.data : json || [];
+    const raw =
+  Array.isArray(json?.data)
+    ? json.data
+    : Array.isArray(json?.data?.invoices)
+    ? json.data.invoices
+    : Array.isArray(json)
+    ? json
+    : [];
       const mapped = raw.map(normalizeInvoiceFromServer);
       setAllInvoices(mapped);
     } catch (err) {
