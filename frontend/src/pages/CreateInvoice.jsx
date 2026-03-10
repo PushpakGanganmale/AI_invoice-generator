@@ -646,168 +646,97 @@ const res = await fetch(
 
   /* ---------- Save invoice to backend (POST or PUT) using Clerk token ---------- */
 async function handleSave() {
+
   if (!invoice) return;
   if (loading) return;
 
   setLoading(true);
-    // save logic here
-    try {
-      // Build prepared object but OMIT invoiceNumber when empty so server auto-generates.
-      const totals = computeTotals(items, invoice.taxPercent);
-      const prepared = {
-  issueDate: invoice.issueDate || "",
-  dueDate: invoice.dueDate || "",
-  fromBusinessName: invoice.fromBusinessName || "",
-  fromEmail: invoice.fromEmail || "",
-  fromAddress: invoice.fromAddress || "",
-  fromPhone: invoice.fromPhone || "",
-  fromGst: invoice.fromGst || "",
-  client: invoice.client || {},
-  items: items || [],
-  currency: invoice.currency || "INR",
-  status: invoice.status || "draft",
-  taxPercent: Number(invoice.taxPercent ?? 18),
 
-  subtotal: totals.subtotal,
-  tax: totals.tax,
-  total: totals.total,
+  try {
 
-  logoDataUrl: invoice.logoDataUrl || null,
-  stampDataUrl: invoice.stampDataUrl || null,
-  signatureDataUrl: invoice.signatureDataUrl || null,
-};
+    const totals = computeTotals(items, invoice.taxPercent);
 
-      // include invoiceNumber only if provided (we prefill for new invoices)
-      if (
-        invoice.invoiceNumber &&
-        String(invoice.invoiceNumber).trim().length > 0
-      ) {
-        prepared.invoiceNumber = String(invoice.invoiceNumber).trim();
-      }
+    const prepared = {
+      issueDate: invoice.issueDate || "",
+      dueDate: invoice.dueDate || "",
+      fromBusinessName: invoice.fromBusinessName || "",
+      fromEmail: invoice.fromEmail || "",
+      fromAddress: invoice.fromAddress || "",
+      fromPhone: invoice.fromPhone || "",
+      fromGst: invoice.fromGst || "",
+      client: invoice.client || {},
+      items: items || [],
+      currency: invoice.currency || "INR",
+      status: invoice.status || "draft",
+      taxPercent: Number(invoice.taxPercent ?? 18),
+
+      subtotal: totals.subtotal,
+      tax: totals.tax,
+      total: totals.total,
+
+      logoDataUrl: invoice.logoDataUrl || null,
+      stampDataUrl: invoice.stampDataUrl || null,
+      signatureDataUrl: invoice.signatureDataUrl || null,
+    };
+
+    if (invoice.invoiceNumber?.trim()) {
+      prepared.invoiceNumber = invoice.invoiceNumber.trim();
+    }
 
     const endpoint =
-  isEditing && invoice.id
-    ? `${API_BASE}/api/invoices/${invoice.id}`
-    : `${API_BASE}/api/invoices`;
+      isEditing && invoice.id
+        ? `${API_BASE}/api/invoices/${invoice.id}`
+        : `${API_BASE}/api/invoices`;
 
-const method = isEditing && invoice.id ? "PUT" : "POST";
+    const method = isEditing ? "PUT" : "POST";
 
-const token = await obtainToken();
+    const token = await obtainToken();
 
-const headers = {
-  "Content-Type": "application/json",
-};
+    const headers = {
+      "Content-Type": "application/json",
+    };
 
-if (token) {
-  headers["Authorization"] = `Bearer ${token}`;
-}
-
-const res = await fetch(endpoint, {
-  method,
-  headers,
-  body: JSON.stringify(prepared),
-});
-
-      // handle conflict (409) when user supplied invoiceNumber already exists
-      if (res.status === 409) {
-        const json = await res.json().catch(() => null);
-        const message = json?.message || "Invoice number already exists.";
-        // Let the user decide — do not auto-retry; they may want to pick a different number.
-        throw new Error(message);
-      }
-
-      const json = await res.json().catch(() => null);
-      if (!res.ok) {
-        const msg = json?.message || `Save failed (${res.status})`;
-        throw new Error(msg);
-      }
-
-      const saved = json?.data || json || null;
-      const savedId = saved?._id ?? saved?.id ?? invoice.id;
-
-      // Use server-provided invoiceNumber (if server generated one)
-      const merged = {
-        ...prepared,
-        id: savedId,
-        invoiceNumber:
-          saved?.invoiceNumber ??
-          prepared.invoiceNumber ??
-          invoice.invoiceNumber,
-        subtotal: saved?.subtotal ?? prepared.subtotal,
-        tax: saved?.tax ?? prepared.tax,
-        total: saved?.total ?? prepared.total,
-      };
-
-      setInvoice((inv) => ({ ...inv, ...merged }));
-      setItems(Array.isArray(saved?.items) ? saved.items : items);
-
-      // update local stored invoices (keep local fallback in sync)
-      const all = getStoredInvoices();
-      if (isEditing) {
-        const idx = all.findIndex(
-          (x) =>
-            x &&
-            (x.id === invoice.id ||
-              x._id === invoice.id ||
-              x.invoiceNumber === invoice.invoiceNumber)
-        );
-        if (idx >= 0) all[idx] = merged;
-        else all.unshift(merged);
-      } else {
-        // For newly created, use server's invoiceNumber/id if provided
-        all.unshift(merged);
-      }
-      saveStoredInvoices(all);
-alert(`Invoice ${isEditing ? "updated" : "created"} successfully.`);
-navigate("/app", { state: { refresh: true } });
-    } catch (err) {
-      console.error("Failed to save invoice to server:", err);
-
-      // If it was a 409 conflict (duplicate invoice number provided by user), show message and let user fix.
-      if (
-        String(err?.message || "")
-          .toLowerCase()
-          .includes("invoice number")
-      ) {
-        alert(err.message || "Invoice number already exists. Choose another.");
-        setLoading(false);
-        return;
-      }
-
-      // fallback: save locally
-      try {
-        const all = getStoredInvoices();
-        const preparedLocal = {
-          ...invoice,
-          items,
-          subtotal: computeTotals(items, invoice.taxPercent).subtotal,
-          tax: computeTotals(items, invoice.taxPercent).tax,
-          total: computeTotals(items, invoice.taxPercent).total,
-        };
-        if (isEditing) {
-          const idx = all.findIndex(
-            (x) =>
-              x &&
-              (x.id === invoice.id ||
-                x._id === invoice.id ||
-                x.invoiceNumber === invoice.invoiceNumber)
-          );
-          if (idx >= 0) all[idx] = preparedLocal;
-          else all.unshift(preparedLocal);
-        } else {
-          all.unshift(preparedLocal);
-        }
-        saveStoredInvoices(all);
-        alert(`Invoice ${isEditing ? "updated" : "created"} successfully.`);
-navigate("/app", { replace: true });
-      } catch (localErr) {
-        console.error("Local fallback failed:", localErr);
-        alert(err?.message || "Save failed. See console.");
-      }
-    } finally {
-      setLoading(false);
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
     }
+
+    const res = await fetch(endpoint, {
+      method,
+      headers,
+      body: JSON.stringify(prepared),
+    });
+
+    const json = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      throw new Error(json?.message || "Failed to save invoice");
+    }
+
+    const saved = json?.data || json;
+
+    setInvoice((prev) => ({
+      ...prev,
+      id: saved._id || saved.id,
+      invoiceNumber: saved.invoiceNumber,
+    }));
+
+    setItems(saved.items || items);
+
+    alert(`Invoice ${isEditing ? "updated" : "created"} successfully.`);
+
+    navigate("/app", { state: { refresh: true } });
+
+  } catch (err) {
+
+    console.error("Invoice save error:", err);
+    alert(err.message || "Failed to save invoice");
+
+  } finally {
+
+    setLoading(false);
+
   }
+}
 
   function handlePreview() {
     const prepared = {
