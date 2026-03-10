@@ -20,7 +20,7 @@ function computeTotals(items = [], taxPercent = 0) {
 /* CREATE */
 export async function createInvoice(req, res) {
   try {
-    const { userId } = req.auth();
+   const { userId } = req.auth;
 
     if (!userId) {
       return res.status(401).json({
@@ -61,7 +61,7 @@ export async function createInvoice(req, res) {
 /* LIST */
 export async function getInvoices(req, res) {
   try {
-    const { userId } = req.auth();
+    const { userId } = req.auth;
 
     if (!userId) {
       return res.status(401).json({
@@ -101,7 +101,7 @@ export async function getInvoices(req, res) {
 /* GET ONE */
 export async function getInvoiceById(req, res) {
   try {
-    const { userId } = req.auth();
+    const { userId } = req.auth;
     const id = req.params.id;
 
     let query = {
@@ -146,7 +146,7 @@ export async function getInvoiceById(req, res) {
 /* UPDATE */
 export async function updateInvoice(req, res) {
   try {
-    const { userId } = req.auth();
+    const { userId } = req.auth;h();
     const id = req.params.id;
 
     let updateData = { ...req.body };
@@ -206,7 +206,7 @@ export async function updateInvoice(req, res) {
 /* DELETE */
 export async function deleteInvoice(req, res) {
   try {
-    const { userId } = req.auth();
+    const { userId } = req.auth;
     const id = req.params.id;
 
     let invoice = null;
