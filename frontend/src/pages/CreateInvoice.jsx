@@ -722,6 +722,8 @@ setInvoice((prev) => ({
 
 setItems(saved?.items ?? items);
 
+setItems(saved?.items ?? items);
+
 setItems(saved?.items || items);
 setItems(saved.items || items);
 
