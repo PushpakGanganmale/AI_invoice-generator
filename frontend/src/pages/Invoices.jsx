@@ -293,17 +293,12 @@ export default function InvoicesPage() {
         const json = await res.json().catch(() => null);
         throw new Error(json?.message || `Failed to fetch (${res.status})`);
       }
-      const json = await res.json().catch(() => null);
-    const raw =
-  Array.isArray(json?.data)
-    ? json.data
-    : Array.isArray(json?.data?.invoices)
-    ? json.data.invoices
-    : Array.isArray(json)
-    ? json
-    : [];
-      const mapped = raw.map(normalizeInvoiceFromServer);
-      setAllInvoices(mapped);
+    const json = await res.json().catch(() => null);
+
+const raw = Array.isArray(json?.data) ? json.data : [];
+
+const mapped = raw.map(normalizeInvoiceFromServer);
+setAllInvoices(mapped);
     } catch (err) {
       console.error("fetchInvoices error:", err);
       setError(err?.message || "Failed to load invoices");
