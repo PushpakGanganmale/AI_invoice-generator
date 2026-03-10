@@ -129,13 +129,11 @@ const obtainToken = useCallback(async () => {
       console.warn("Failed to fetch business profile:", err);
     }
   }, [obtainToken]);
-
- useEffect(() => {
+useEffect(() => {
   if (!isSignedIn) return;
-
   fetchInvoices();
   fetchBusinessProfile();
-}, [isSignedIn, location.pathname]);
+}, [isSignedIn, fetchInvoices, fetchBusinessProfile]);
   const kpis = useMemo(() => {
     const totalInvoices = storedInvoices.length;
     let totalPaid = 0, totalUnpaid = 0, paidCount = 0;

@@ -62,7 +62,7 @@ export default function BusinessProfile() {
       if (!isSignedIn) return;
       const token = await getToken();
       try {
-        const res = await fetch(`${API_BASE}/api/businessProfile/me`, {
+      const res = await fetch(`${API_BASE}/api/business-profile/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok && mounted) {
