@@ -646,14 +646,11 @@ const res = await fetch(
 
   /* ---------- Save invoice to backend (POST or PUT) using Clerk token ---------- */
 async function handleSave() {
-
   if (!invoice) return;
   if (loading) return;
-
   setLoading(true);
 
   try {
-
     const totals = computeTotals(items, invoice.taxPercent);
 
     const prepared = {
@@ -669,11 +666,9 @@ async function handleSave() {
       currency: invoice.currency || "INR",
       status: invoice.status || "draft",
       taxPercent: Number(invoice.taxPercent ?? 18),
-
       subtotal: totals.subtotal,
       tax: totals.tax,
       total: totals.total,
-
       logoDataUrl: invoice.logoDataUrl || null,
       stampDataUrl: invoice.stampDataUrl || null,
       signatureDataUrl: invoice.signatureDataUrl || null,
@@ -683,26 +678,19 @@ async function handleSave() {
       prepared.invoiceNumber = invoice.invoiceNumber.trim();
     }
 
-    const endpoint =
-      isEditing && invoice.id
-        ? `${API_BASE}/api/invoices/${invoice.id}`
-        : `${API_BASE}/api/invoices`;
+    const endpoint = isEditing && invoice.id
+      ? `${API_BASE}/api/invoices/${invoice.id}`
+      : `${API_BASE}/api/invoices`;
 
     const method = isEditing ? "PUT" : "POST";
-
     const token = await obtainToken();
-
-    const headers = {
-      "Content-Type": "application/json",
-    };
-
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
 
     const res = await fetch(endpoint, {
       method,
-      headers,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify(prepared),
     });
 
@@ -712,51 +700,54 @@ async function handleSave() {
       throw new Error(json?.message || "Failed to save invoice");
     }
 
-const saved = json?.data ?? json ?? {};
+    const saved = json?.data ?? json ?? {};
 
-setInvoice((prev) => ({
-  ...prev,
-  id: saved?._id || saved?.id || prev.id,
-  invoiceNumber: saved?.invoiceNumber || prev.invoiceNumber,
-}));
+    setInvoice((prev) => ({
+      ...prev,
+      id: saved?._id || saved?.id || prev.id,
+      invoiceNumber: saved?.invoiceNumber || prev.invoiceNumber,
+    }));
 
-setItems(saved?.items ?? items);
-
-setItems(saved?.items ?? items);
-
-setItems(saved?.items || items);
-setItems(saved.items || items);
-
-    setItems(saved.items || items);
+    setItems(saved?.items || items); // ✅ only once
 
     alert(`Invoice ${isEditing ? "updated" : "created"} successfully.`);
 
-    navigate("/app", { state: { refresh: true } });
+    navigate("/app/dashboard"); // ✅ FIXED
 
   } catch (err) {
-
     console.error("Invoice save error:", err);
     alert(err.message || "Failed to save invoice");
-
   } finally {
-
     setLoading(false);
-
   }
 }
 
-  function handlePreview() {
-    const prepared = {
-      ...invoice,
-      items,
-      subtotal: computeTotals(items, invoice.taxPercent).subtotal,
-      tax: computeTotals(items, invoice.taxPercent).tax,
-      total: computeTotals(items, invoice.taxPercent).total,
-    };
-    navigate(`/app/${invoice.id}/preview`, {
-      state: { invoice: prepared },
-    });
-  }
+function handlePreview() {
+  const prepared = {
+    ...invoice,
+    items,
+    subtotal: computeTotals(items, invoice.taxPercent).subtotal,
+    tax: computeTotals(items, invoice.taxPercent).tax,
+    total: computeTotals(items, invoice.taxPercent).total,
+  };
+  // ✅ FIXED: was /app/${invoice.id}/preview
+  navigate(`/app/invoices/${invoice.id}/preview`, {
+    state: { invoice: prepared },
+  });
+}
+function handlePreview() {
+  const prepared = {
+    ...invoice,
+    items,
+    subtotal: computeTotals(items, invoice.taxPercent).subtotal,
+    tax: computeTotals(items, invoice.taxPercent).tax,
+    total: computeTotals(items, invoice.taxPercent).total,
+  };
+  // ✅ FIXED: was /app/${invoice.id}/preview
+  navigate(`/app/invoices/${invoice.id}/preview`, {
+    state: { invoice: prepared },
+  });
+}
 
   const totals = computeTotals(items, invoice?.taxPercent ?? 18);
 
