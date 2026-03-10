@@ -307,10 +307,9 @@ export default function InvoicesPage() {
   }, [obtainToken]);
 
   useEffect(() => {
-    // load invoices on mount and whenever auth state changes
-    fetchInvoices();
-  }, [fetchInvoices, isSignedIn]);
-
+  if (!isSignedIn) return;
+  fetchInvoices();
+}, [fetchInvoices, isSignedIn]);
   // client-side filtering/sorting (same logic)
   const filtered = useMemo(() => {
     let arr = Array.isArray(allInvoices) ? allInvoices.slice() : [];
