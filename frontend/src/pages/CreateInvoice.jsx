@@ -265,78 +265,103 @@ export default function CreateInvoice() {
   }, [id, invoiceFromState, isEditing, obtainToken]);
 
   /* Save invoice */
-  async function handleSave() {
-    if (!invoice || loading) return;
-    setLoading(true);
-    try {
-      const totals = computeTotals(items, invoice.taxPercent);
-      const prepared = {
-        issueDate: invoice.issueDate || "",
-        dueDate: invoice.dueDate || "",
-        fromBusinessName: invoice.fromBusinessName || "",
-        fromEmail: invoice.fromEmail || "",
-        fromAddress: invoice.fromAddress || "",
-        fromPhone: invoice.fromPhone || "",
-        fromGst: invoice.fromGst || "",
-        client: invoice.client || {},
-        items: items || [],
-        currency: invoice.currency || "INR",
-        status: invoice.status || "draft",
-        taxPercent: Number(invoice.taxPercent ?? 18),
-        subtotal: totals.subtotal,
-        tax: totals.tax,
-        total: totals.total,
-        logoDataUrl: invoice.logoDataUrl || null,
-        stampDataUrl: invoice.stampDataUrl || null,
-        signatureDataUrl: invoice.signatureDataUrl || null,
-        notes: invoice.notes || "",
-      };
+ async function handleSave() {
+  if (!invoice || loading) return;
 
-      // FIX: only include invoiceNumber if it has a non-empty value
-      if (invoice.invoiceNumber && String(invoice.invoiceNumber).trim()) {
-        prepared.invoiceNumber = String(invoice.invoiceNumber).trim();
-      }
-      // If invoiceNumber is missing, backend will auto-generate one
+  if (!isSignedIn) {
+    alert("Please sign in first.");
+    return;
+  }
 
-      const endpoint = isEditing && invoice.id
+  const token = await obtainToken();
+
+  if (!token) {
+    alert("Authentication failed. Please login again.");
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const totals = computeTotals(items, invoice.taxPercent);
+
+    const prepared = {
+      issueDate: invoice.issueDate || "",
+      dueDate: invoice.dueDate || "",
+
+      fromBusinessName: invoice.fromBusinessName || "",
+      fromEmail: invoice.fromEmail || "",
+      fromAddress: invoice.fromAddress || "",
+      fromPhone: invoice.fromPhone || "",
+      fromGst: invoice.fromGst || "",
+
+      client: invoice.client || {},
+      items: items || [],
+
+      currency: invoice.currency || "INR",
+      status: invoice.status || "draft",
+
+      taxPercent: Number(invoice.taxPercent ?? 18),
+
+      subtotal: totals.subtotal,
+      tax: totals.tax,
+      total: totals.total,
+
+      logoDataUrl: invoice.logoDataUrl || null,
+      stampDataUrl: invoice.stampDataUrl || null,
+      signatureDataUrl: invoice.signatureDataUrl || null,
+
+      notes: invoice.notes || "",
+    };
+
+    // Only include invoiceNumber if user entered one
+    if (invoice.invoiceNumber && String(invoice.invoiceNumber).trim()) {
+      prepared.invoiceNumber = String(invoice.invoiceNumber).trim();
+    }
+
+    const endpoint =
+      isEditing && invoice.id
         ? `${API_BASE}/api/invoices/${invoice.id}`
         : `${API_BASE}/api/invoices`;
-      const method = isEditing ? "PUT" : "POST";
-      const token = await obtainToken();
 
-      const res = await fetch(endpoint, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(prepared),
-      });
+    const method = isEditing ? "PUT" : "POST";
 
-      const json = await res.json().catch(() => null);
+    const res = await fetch(endpoint, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(prepared),
+    });
 
-      if (!res.ok) {
-        throw new Error(json?.message || "Failed to save invoice");
-      }
+    const json = await res.json().catch(() => null);
 
-      const saved = json?.data ?? json ?? {};
-      setInvoice((prev) => ({
-        ...prev,
-        id: saved?._id || saved?.id || prev.id,
-        invoiceNumber: saved?.invoiceNumber || prev.invoiceNumber,
-      }));
-      setItems(saved?.items || items);
-
-      alert(`Invoice ${isEditing ? "updated" : "created"} successfully.`);
-      navigate("/app/invoices");
-
-    } catch (err) {
-      console.error("Invoice save error:", err);
-      alert(err.message || "Failed to save invoice");
-    } finally {
-      setLoading(false);
+    if (!res.ok) {
+      throw new Error(json?.message || "Failed to save invoice");
     }
+
+    const saved = json?.data ?? json ?? {};
+
+    setInvoice((prev) => ({
+      ...prev,
+      id: saved?._id || saved?.id || prev.id,
+      invoiceNumber: saved?.invoiceNumber || prev.invoiceNumber,
+    }));
+
+    setItems(saved?.items || items);
+
+    alert(`Invoice ${isEditing ? "updated" : "created"} successfully.`);
+
+    navigate("/app/invoices");
+
+  } catch (err) {
+    console.error("Invoice save error:", err);
+    alert(err.message || "Failed to save invoice");
+  } finally {
+    setLoading(false);
   }
+}
 
   function handlePreview() {
     const prepared = {
