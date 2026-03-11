@@ -25,14 +25,16 @@ export const createOrder = async (req, res) => {
       receipt: `invoice_${invoice._id}`,
     });
 
-    res.json(order);
+    res.json({
+      success: true,
+      order,
+    });
 
   } catch (error) {
-    console.error(error);
+    console.error("Create Order Error:", error);
     res.status(500).json({ message: "Payment failed" });
   }
 };
-
 export const updatePayment = async (req, res) => {
   try {
 
