@@ -133,7 +133,7 @@ useEffect(() => {
   if (!isSignedIn) return;
   fetchInvoices();
   fetchBusinessProfile();
-}, [isSignedIn, fetchInvoices, fetchBusinessProfile]);
+}, [isSignedIn, location.pathname, fetchInvoices, fetchBusinessProfile]);
   const kpis = useMemo(() => {
     const totalInvoices = storedInvoices.length;
     let totalPaid = 0, totalUnpaid = 0, paidCount = 0;
