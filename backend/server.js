@@ -10,6 +10,7 @@ import { connectDB } from "./config/db.js";
 import invoiceRouter from "./routes/invoiceRouter.js";
 import bussinessProfileRouter from "./routes/bussinessProfileRouter.js";
 import aiInvoiceRouter from "./routes/aiInvoiceRouter.js";
+import paymentRouter from "./routes/paymentRouter.js";
 
 const app = express();
 const port = process.env.PORT || 4000;
