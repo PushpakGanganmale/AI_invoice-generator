@@ -369,6 +369,21 @@ export default function InvoicePreview() {
 
     const token = await obtainToken();
 
+    // calculate total here
+    const subtotal = items.reduce(
+      (s, it) => s + Number(it.qty || 0) * Number(it.unitPrice || 0),
+      0
+    );
+
+    const taxPercent = Number(
+      invoice.taxPercent ?? profile.defaultTaxPercent ?? 18
+    );
+
+    const tax = (subtotal * taxPercent) / 100;
+    const total = subtotal + tax;
+
+    console.log("Payment amount:", total);
+
     const res = await fetch(`${API_BASE}/api/payment/create-order`, {
       method: "POST",
       headers: {
@@ -380,32 +395,16 @@ export default function InvoicePreview() {
       }),
     });
 
-    const order = await res.json();
+    const data = await res.json();
+    const order = data.order || data;
 
     const options = {
-     key: "rzp_live_SPnxCBbAompnt1", // replace with your Razorpay Key ID
+      key: "rzp_live_SPnxCBbAompnt1",
       amount: order.amount,
       currency: "INR",
       name: "Invoice Genius",
       description: "Invoice Payment",
       order_id: order.id,
-
-      handler: async function () {
-
-        alert("Payment Successful!");
-
-        await fetch(`${API_BASE}/api/invoices/${invoice.id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            status: "paid",
-          }),
-        });
-        window.location.reload();
-      },
     };
 
     const razor = new window.Razorpay(options);
