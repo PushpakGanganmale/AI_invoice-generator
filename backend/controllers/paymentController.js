@@ -9,12 +9,20 @@ const razorpay = new Razorpay({
 export const createOrder = async (req, res) => {
   try {
 
-    const { amount } = req.body;
+    const { invoiceId } = req.body;
+
+    const invoice = await Invoice.findById(invoiceId);
+
+    if (!invoice) {
+      return res.status(404).json({ message: "Invoice not found" });
+    }
+
+    const amount = invoice.remainingAmount || invoice.total;
 
     const order = await razorpay.orders.create({
       amount: Number(amount) * 100,
       currency: "INR",
-      receipt: `receipt_${Date.now()}`,
+      receipt: `invoice_${invoice._id}`,
     });
 
     res.json(order);
@@ -24,7 +32,6 @@ export const createOrder = async (req, res) => {
     res.status(500).json({ message: "Payment failed" });
   }
 };
-
 
 export const updatePayment = async (req, res) => {
   try {
@@ -37,7 +44,7 @@ export const updatePayment = async (req, res) => {
       return res.status(404).json({ message: "Invoice not found" });
     }
 
-    invoice.paidAmount += amount;
+    invoice.paidAmount += Number(amount);
 
     invoice.remainingAmount = invoice.total - invoice.paidAmount;
 
