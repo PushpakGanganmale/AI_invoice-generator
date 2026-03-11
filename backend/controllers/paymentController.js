@@ -12,8 +12,6 @@ export const createOrder = async (req, res) => {
   try {
     const { invoiceId } = req.body;
 
-    console.log("Create order request for invoice:", invoiceId);
-
     if (!invoiceId) {
       return res.status(400).json({
         success: false,
@@ -30,7 +28,20 @@ export const createOrder = async (req, res) => {
       });
     }
 
-    const amount = invoice.remainingAmount ?? invoice.total;
+    /* -------- CALCULATE PAYMENT AMOUNT -------- */
+
+    let amount = invoice.remainingAmount || invoice.total;
+
+    if (!amount || amount <= 0) {
+      const subtotal = (invoice.items || []).reduce(
+        (sum, item) => sum + (item.qty || 0) * (item.unitPrice || 0),
+        0
+      );
+
+      const tax = (subtotal * (invoice.taxPercent || 0)) / 100;
+
+      amount = subtotal + tax;
+    }
 
     if (!amount || amount <= 0) {
       return res.status(400).json({
@@ -39,13 +50,13 @@ export const createOrder = async (req, res) => {
       });
     }
 
+    /* -------- CREATE RAZORPAY ORDER -------- */
+
     const order = await razorpay.orders.create({
       amount: Math.round(Number(amount) * 100),
       currency: "INR",
       receipt: `invoice_${invoice._id}`,
     });
-
-    console.log("Razorpay order created:", order.id);
 
     res.json({
       success: true,
@@ -58,7 +69,6 @@ export const createOrder = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Payment initialization failed",
-      error: error.message,
     });
   }
 };
@@ -68,8 +78,6 @@ export const createOrder = async (req, res) => {
 export const updatePayment = async (req, res) => {
   try {
     const { invoiceId, amount } = req.body;
-
-    console.log("Update payment:", invoiceId, amount);
 
     if (!invoiceId || !amount) {
       return res.status(400).json({
@@ -89,10 +97,16 @@ export const updatePayment = async (req, res) => {
 
     invoice.paidAmount = (invoice.paidAmount || 0) + Number(amount);
 
-    invoice.remainingAmount = invoice.total - invoice.paidAmount;
+    invoice.remainingAmount = Math.max(
+      invoice.total - invoice.paidAmount,
+      0
+    );
 
-    invoice.status =
-      invoice.remainingAmount <= 0 ? "paid" : "partially_paid";
+    if (invoice.remainingAmount <= 0) {
+      invoice.status = "paid";
+    } else {
+      invoice.status = "partially_paid";
+    }
 
     await invoice.save();
 
@@ -107,7 +121,6 @@ export const updatePayment = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Payment update failed",
-      error: error.message,
     });
   }
 };
