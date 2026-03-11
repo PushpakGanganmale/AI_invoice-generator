@@ -55,7 +55,7 @@ const location = useLocation();
   const getClientName = (inv) => normalizeClient(inv.client).name;
   const getClientInitial = (inv) => getClientName(inv).charAt(0).toUpperCase() || "?";
   const formatDate = (dateStr) => (dateStr ? new Date(dateStr).toLocaleDateString() : "-");
-  const openInvoice = (inv) => navigate(`/app/invoices/${inv._id || inv.id}`);
+ const openInvoice = (inv) => navigate(`/app/invoices/${inv.id}`);
 
   // Get the 5 most recent invoices
   const recent = useMemo(() => storedInvoices.slice(0, 5), [storedInvoices]);
