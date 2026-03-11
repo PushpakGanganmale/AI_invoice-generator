@@ -376,7 +376,7 @@ export default function InvoicePreview() {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        amount: total*100,
+        amount: total,
       }),
     });
 
