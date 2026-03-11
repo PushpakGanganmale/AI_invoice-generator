@@ -8,19 +8,35 @@ const razorpay = new Razorpay({
 
 export const createOrder = async (req, res) => {
   try {
-
     const { invoiceId } = req.body;
+
+    if (!invoiceId) {
+      return res.status(400).json({
+        success: false,
+        message: "Invoice ID is required",
+      });
+    }
 
     const invoice = await Invoice.findById(invoiceId);
 
     if (!invoice) {
-      return res.status(404).json({ message: "Invoice not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Invoice not found",
+      });
     }
 
-    const amount = invoice.remainingAmount || invoice.total;
+    const amount = invoice.remainingAmount ?? invoice.total;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid payment amount",
+      });
+    }
 
     const order = await razorpay.orders.create({
-      amount: Number(amount) * 100,
+      amount: Math.round(Number(amount) * 100),
       currency: "INR",
       receipt: `invoice_${invoice._id}`,
     });
@@ -32,21 +48,34 @@ export const createOrder = async (req, res) => {
 
   } catch (error) {
     console.error("Create Order Error:", error);
-    res.status(500).json({ message: "Payment failed" });
+    res.status(500).json({
+      success: false,
+      message: "Payment initialization failed",
+    });
   }
 };
+
 export const updatePayment = async (req, res) => {
   try {
-
     const { invoiceId, amount } = req.body;
+
+    if (!invoiceId || !amount) {
+      return res.status(400).json({
+        success: false,
+        message: "Invoice ID and amount required",
+      });
+    }
 
     const invoice = await Invoice.findById(invoiceId);
 
     if (!invoice) {
-      return res.status(404).json({ message: "Invoice not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Invoice not found",
+      });
     }
 
-    invoice.paidAmount += Number(amount);
+    invoice.paidAmount = (invoice.paidAmount || 0) + Number(amount);
 
     invoice.remainingAmount = invoice.total - invoice.paidAmount;
 
@@ -64,7 +93,10 @@ export const updatePayment = async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Payment update failed" });
+    console.error("Payment Update Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Payment update failed",
+    });
   }
 };

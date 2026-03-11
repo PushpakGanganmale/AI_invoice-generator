@@ -379,18 +379,18 @@ const handlePayment = async () => {
       }),
     });
 
-const data = await res.json();
+    const data = await res.json();
 
-if (!data || !data.order) {
-  console.error("Invalid order response", data);
-  alert("Payment initialization failed");
-  return;
-}
+    if (!data?.success || !data?.order) {
+      console.error("Invalid order response", data);
+      alert("Payment initialization failed");
+      return;
+    }
 
-const order = data.order;
+    const order = data.order;
 
     const options = {
-key:"rzp_live_SPnxCBbAompnt1",
+      key: "rzp_live_SPnxCBbAompnt1",
       amount: order.amount,
       currency: "INR",
       name: "Invoice Genius",
@@ -398,7 +398,6 @@ key:"rzp_live_SPnxCBbAompnt1",
       order_id: order.id,
 
       handler: async function (response) {
-
         alert("Payment Successful");
 
         await fetch(`${API_BASE}/api/payment/update-payment`, {
@@ -409,7 +408,7 @@ key:"rzp_live_SPnxCBbAompnt1",
           },
           body: JSON.stringify({
             invoiceId: invoice.id,
-            paymentId: response.razorpay_payment_id,
+            amount: order.amount / 100,
           }),
         });
 
