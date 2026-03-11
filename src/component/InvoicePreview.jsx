@@ -404,7 +404,6 @@ export default function InvoicePreview() {
             status: "paid",
           }),
         });
-
         window.location.reload();
       },
     };
