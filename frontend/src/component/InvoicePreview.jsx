@@ -375,7 +375,7 @@ const handlePayment = async () => {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        invoiceId: invoice.id,
+        invoiceId: invoice._id || invoice.id, // FIXED HERE
       }),
     });
 
@@ -407,7 +407,7 @@ const handlePayment = async () => {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            invoiceId: invoice.id,
+            invoiceId: invoice._id || invoice.id, // FIXED HERE
             amount: order.amount / 100,
           }),
         });
