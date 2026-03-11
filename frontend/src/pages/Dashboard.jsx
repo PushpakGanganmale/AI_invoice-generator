@@ -55,7 +55,10 @@ const location = useLocation();
   const getClientName = (inv) => normalizeClient(inv.client).name;
   const getClientInitial = (inv) => getClientName(inv).charAt(0).toUpperCase() || "?";
   const formatDate = (dateStr) => (dateStr ? new Date(dateStr).toLocaleDateString() : "-");
- const openInvoice = (inv) => navigate(`/app/invoices/${inv.id}/edit`);
+const openInvoice = (inv) => {
+  const invoiceId = inv.id || inv._id;
+  navigate(`/app/invoices/${invoiceId}/edit`);
+};
 
   // Get the 5 most recent invoices
   const recent = useMemo(() => storedInvoices.slice(0, 5), [storedInvoices]);
@@ -265,7 +268,9 @@ useEffect(() => {
                           <div className={dashboardStyles.clientAvatar}>{getClientInitial(inv)}</div>
                           <div>
                             <div className={dashboardStyles.clientInfo}>{getClientName(inv)}</div>
-                            <div className={dashboardStyles.clientSubInfo}>{inv.id}</div>
+                            <div className={dashboardStyles.clientSubInfo}>
+  {inv.invoiceNumber || inv.id}
+</div>
                           </div>
                         </div>
                       </td>
