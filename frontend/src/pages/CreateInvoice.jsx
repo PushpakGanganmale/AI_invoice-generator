@@ -712,7 +712,7 @@ async function handleSave() {
 
     alert(`Invoice ${isEditing ? "updated" : "created"} successfully.`);
 
-    navigate("/app/dashboard"); // ✅ FIXED
+  navigate("/app/invoices");   // ✅ FIXED
 
   } catch (err) {
     console.error("Invoice save error:", err);
@@ -731,7 +731,7 @@ function handlePreview() {
     total: computeTotals(items, invoice.taxPercent).total,
   };
   // ✅ FIXED: was /app/${invoice.id}/preview
- navigate(`/app/invoices/preview`, {
+navigate(`/app/invoices/${invoice.id}/preview`, {
     state: { invoice: prepared },
   });
 }

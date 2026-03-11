@@ -36,35 +36,21 @@ function resolveImageUrl(url) {
   // relative paths like "/uploads/..." or "uploads/..." -> prefix with API_BASE
   return `${API_BASE.replace(/\/+$/, "")}/${s.replace(/^\/+/, "")}`;
 }
-
 function normalizeInvoiceFromServer(inv = {}) {
-  const id = inv.invoiceNumber || inv.id || inv._id || String(inv._id || "");
+  const id = inv._id || inv.invoiceNumber;
+
   const amount =
     inv.total ??
     inv.amount ??
     (inv.subtotal !== undefined ? inv.subtotal + (inv.tax ?? 0) : 0);
-  const status = inv.status ?? inv.statusLabel ?? "Draft";
 
-  // Resolve any image/url fields so frontend doesn't try to load localhost from deployed client
-  const logo = resolveImageUrl(
-    inv.logoDataUrl ?? inv.logoUrl ?? inv.logo ?? null
-  );
-  const stamp = resolveImageUrl(
-    inv.stampDataUrl ?? inv.stampUrl ?? inv.stamp ?? null
-  );
-  const signature = resolveImageUrl(
-    inv.signatureDataUrl ?? inv.signatureUrl ?? inv.signature ?? null
-  );
+  const status = inv.status ?? inv.statusLabel ?? "Draft";
 
   return {
     ...inv,
     id,
     amount,
     status,
-    // normalized image fields (safe for deployed frontend)
-    logo,
-    stamp,
-    signature,
   };
 }
 
