@@ -383,7 +383,7 @@ const handlePayment = async () => {
     const order = data.order || data;
 
     const options = {
-      key: "rzp_test_xxxxx",   // replace with your Razorpay test key
+      key:"rzp_test_YOUR_REAL_KEY",   // replace with your Razorpay test key
       amount: order.amount,
       currency: "INR",
       name: "Invoice Genius",
