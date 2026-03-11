@@ -57,11 +57,16 @@ const InvoiceSchema = new mongoose.Schema(
     subtotal: { type: Number, default: 0 },
     tax: { type: Number, default: 0 },
     total: { type: Number, default: 0 },
+
+    // FIX: Added missing fields that InvoicePreview uses
+    notes: { type: String, default: "" },
+    terms: { type: String, default: "" },
   },
   { timestamps: true }
 );
 
-InvoiceSchema.index({ owner: 1, invoiceNumber: 1 }, { unique: true });
+// FIX: sparse:true allows multiple docs with missing/null invoiceNumber without collision
+InvoiceSchema.index({ owner: 1, invoiceNumber: 1 }, { unique: true, sparse: true });
 InvoiceSchema.index({ owner: 1, createdAt: -1 });
 
 const Invoice =

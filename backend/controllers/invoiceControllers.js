@@ -15,7 +15,6 @@ function computeTotals(items = [], taxPercent = 0) {
   };
 }
 
-/* unique invoice number helper */
 function generateInvoiceNumber() {
   const ts = Date.now().toString(36).toUpperCase();
   const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -25,7 +24,9 @@ function generateInvoiceNumber() {
 /* CREATE */
 export async function createInvoice(req, res) {
   try {
-    const { userId } = req.auth;
+    // FIX: use req.auth (object) not req.auth() (function call)
+    const auth = req.auth;
+    const userId = auth?.userId;
 
     if (!userId) {
       return res.status(401).json({ success: false, message: "User not authenticated" });
@@ -38,17 +39,15 @@ export async function createInvoice(req, res) {
     const invoiceData = {
       ...body,
       owner: userId,
-      invoiceNumber: body.invoiceNumber || generateInvoiceNumber(),
+      invoiceNumber: (body.invoiceNumber && body.invoiceNumber.trim()) || generateInvoiceNumber(),
       ...totals,
     };
 
     const invoice = await Invoice.create(invoiceData);
-
     res.status(201).json({ success: true, data: invoice });
 
   } catch (err) {
     console.error("Create Error:", err);
-    // Handle duplicate invoiceNumber
     if (err.code === 11000) {
       return res.status(409).json({ success: false, message: "Duplicate invoice number. Please try again." });
     }
@@ -59,7 +58,8 @@ export async function createInvoice(req, res) {
 /* LIST */
 export async function getInvoices(req, res) {
   try {
-    const { userId } = req.auth;
+    const auth = req.auth;
+    const userId = auth?.userId;
 
     if (!userId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -73,7 +73,6 @@ export async function getInvoices(req, res) {
     }
 
     const invoices = await Invoice.find(query).sort({ createdAt: -1 }).lean();
-
     res.json({ success: true, count: invoices.length, data: invoices });
 
   } catch (err) {
@@ -85,7 +84,8 @@ export async function getInvoices(req, res) {
 /* GET ONE */
 export async function getInvoiceById(req, res) {
   try {
-    const { userId } = req.auth;
+    const auth = req.auth;
+    const userId = auth?.userId;
     const id = req.params.id;
 
     let query = { owner: userId, invoiceNumber: id };
@@ -111,7 +111,8 @@ export async function getInvoiceById(req, res) {
 /* UPDATE */
 export async function updateInvoice(req, res) {
   try {
-    const { userId } = req.auth; // ✅ FIXED: removed stray h();
+    const auth = req.auth;
+    const userId = auth?.userId;
     const id = req.params.id;
 
     let updateData = { ...req.body };
@@ -147,7 +148,8 @@ export async function updateInvoice(req, res) {
 /* DELETE */
 export async function deleteInvoice(req, res) {
   try {
-    const { userId } = req.auth;
+    const auth = req.auth;
+    const userId = auth?.userId;
     const id = req.params.id;
 
     let invoice = null;
