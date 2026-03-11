@@ -1,4 +1,5 @@
 import Razorpay from "razorpay";
+import Invoice from "../models/invoiceModel.js";
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -7,34 +8,54 @@ const razorpay = new Razorpay({
 
 export const createOrder = async (req, res) => {
   try {
+
     const { amount } = req.body;
 
-    if (!amount) {
-      return res.status(400).json({
-        success: false,
-        message: "Amount is required",
-      });
-    }
-
-    const options = {
-      amount: Number(amount) * 100, // convert to paise
+    const order = await razorpay.orders.create({
+      amount: Number(amount) * 100,
       currency: "INR",
       receipt: `receipt_${Date.now()}`,
-    };
+    });
 
-    const order = await razorpay.orders.create(options);
+    res.json(order);
 
-    return res.status(200).json({
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Payment failed" });
+  }
+};
+
+
+export const updatePayment = async (req, res) => {
+  try {
+
+    const { invoiceId, amount } = req.body;
+
+    const invoice = await Invoice.findById(invoiceId);
+
+    if (!invoice) {
+      return res.status(404).json({ message: "Invoice not found" });
+    }
+
+    invoice.paidAmount += amount;
+
+    invoice.remainingAmount = invoice.total - invoice.paidAmount;
+
+    if (invoice.remainingAmount <= 0) {
+      invoice.status = "paid";
+    } else {
+      invoice.status = "partially_paid";
+    }
+
+    await invoice.save();
+
+    res.json({
       success: true,
-      order,
+      invoice,
     });
 
   } catch (error) {
-    console.error("Razorpay Error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Failed to create Razorpay order",
-    });
+    console.error(error);
+    res.status(500).json({ message: "Payment update failed" });
   }
 };

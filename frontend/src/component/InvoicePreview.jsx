@@ -366,10 +366,8 @@ export default function InvoicePreview() {
 
   const handlePayment = async () => {
   try {
-
     const token = await obtainToken();
 
-    // calculate total here
     const subtotal = items.reduce(
       (s, it) => s + Number(it.qty || 0) * Number(it.unitPrice || 0),
       0
@@ -381,8 +379,6 @@ export default function InvoicePreview() {
 
     const tax = (subtotal * taxPercent) / 100;
     const total = subtotal + tax;
-
-    console.log("Payment amount:", total);
 
     const res = await fetch(`${API_BASE}/api/payment/create-order`, {
       method: "POST",
@@ -405,6 +401,25 @@ export default function InvoicePreview() {
       name: "Invoice Genius",
       description: "Invoice Payment",
       order_id: order.id,
+
+      handler: async function () {
+
+        alert("Payment Successful");
+
+        await fetch(`${API_BASE}/api/payment/update-payment`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            invoiceId: invoice.id,
+            amount: total,
+          }),
+        });
+
+        window.location.reload();
+      },
     };
 
     const razor = new window.Razorpay(options);
