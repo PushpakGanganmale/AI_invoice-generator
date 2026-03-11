@@ -379,11 +379,18 @@ const handlePayment = async () => {
       }),
     });
 
-    const data = await res.json();
-    const order = data.order || data;
+const data = await res.json();
+
+if (!data || !data.order) {
+  console.error("Invalid order response", data);
+  alert("Payment initialization failed");
+  return;
+}
+
+const order = data.order;
 
     const options = {
-      key:"rzp_test_YOUR_REAL_KEY",   // replace with your Razorpay test key
+key:"rzp_live_SPnxCBbAompnt1",
       amount: order.amount,
       currency: "INR",
       name: "Invoice Genius",
