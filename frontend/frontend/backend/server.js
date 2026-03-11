@@ -10,7 +10,6 @@ import { connectDB } from "./config/db.js";
 import invoiceRouter from "./routes/invoiceRouter.js";
 import bussinessProfileRouter from "./routes/bussinessProfileRouter.js";
 import aiInvoiceRouter from "./routes/aiInvoiceRouter.js";
-import paymentRouter from "./routes/paymentRouter.js";
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -57,15 +56,11 @@ app.get("/api/health", (req, res) => {
 
 /* ---------------- API ROUTES ---------------- */
 
-/* ---------------- API ROUTES ---------------- */
-
 app.use("/api/invoices", requireAuth(), invoiceRouter);
 
 app.use("/api/business-profile", requireAuth(), bussinessProfileRouter);
 
 app.use("/api/ai-invoices", requireAuth(), aiInvoiceRouter);
-
-app.use("/api/payment", requireAuth(), paymentRouter);
 
 /* ---------------- ERROR HANDLER ---------------- */
 

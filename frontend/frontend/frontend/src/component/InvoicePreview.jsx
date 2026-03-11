@@ -353,7 +353,6 @@ export default function InvoicePreview() {
       "_"
     )}`;
 
-
     const prevTitle = document.title;
     document.title = safe;
     window.print();
@@ -363,77 +362,6 @@ export default function InvoicePreview() {
       document.title = prevTitle;
     }, 500);
   }, [invoice]);
-
-const handlePayment = async () => {
-  try {
-    const token = await obtainToken();
-
-    const res = await fetch(`${API_BASE}/api/payment/create-order`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        invoiceId: invoice.id,
-      }),
-    });
-
-    const data = await res.json();
-
-    if (!data?.success || !data?.order) {
-      console.error("Invalid order response", data);
-      alert("Payment initialization failed");
-      return;
-    }
-
-    const order = data.order;
-
-    const options = {
-      key: "rzp_live_SPnxCBbAompnt1",
-      amount: order.amount,
-      currency: "INR",
-      name: "Invoice Genius",
-      description: "Invoice Payment",
-      order_id: order.id,
-
-      handler: async function (response) {
-        alert("Payment Successful");
-
-        await fetch(`${API_BASE}/api/payment/update-payment`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            invoiceId: invoice.id,
-            amount: order.amount / 100,
-          }),
-        });
-
-        window.location.reload();
-      },
-
-      prefill: {
-        name: client?.name || "",
-        email: client?.email || "",
-        contact: client?.phone || "",
-      },
-
-      theme: {
-        color: "#16a34a",
-      },
-    };
-
-    const razor = new window.Razorpay(options);
-    razor.open();
-
-  } catch (err) {
-    console.error(err);
-    alert("Payment failed");
-  }
-};
 
   if (!invoice && (loadingInvoice || profileLoading)) {
     return <div className="p-6">Loading…</div>;
@@ -526,36 +454,26 @@ const handlePayment = async () => {
             </p>
           </div>
 
-        <div className={invoicePreviewStyles.headerActions}>
-  <button
-    onClick={() =>
-      navigate(`/app/invoices/${invoice.id}/edit`, {
-        state: { invoice },
-      })
-    }
-    className={invoicePreviewStyles.editInvoiceButton}
-  >
-    <EditIcon className="w-4 h-4" /> Edit Invoice
-  </button>
+          <div className={invoicePreviewStyles.headerActions}>
+            <button
+              onClick={() =>
+                navigate(`/app/invoices/${invoice.id}/edit`, {
+                  state: { invoice },
+                })
+              }
+              className={invoicePreviewStyles.editInvoiceButton}
+            >
+              <EditIcon className="w-4 h-4" /> Edit Invoice
+            </button>
 
-  <button
-    onClick={handlePrint}
-    className={invoicePreviewStyles.printButton}
-  >
-    <PrintIcon className="w-4 h-4" /> Print / Save as PDF
-  </button>
-
-  {/* Pay Button */}
-  {invoice.status !== "paid" && (
-    <button
-      onClick={handlePayment}
-      className="bg-green-600 text-white px-4 py-2 rounded-lg"
-    >
-      Pay Now
-    </button>
-  )}
-</div>
-</div>  
+            <button
+              onClick={handlePrint}
+              className={invoicePreviewStyles.printButton}
+            >
+              <PrintIcon className="w-4 h-4" /> Print / Save as PDF
+            </button>
+          </div>
+        </div>
 
         {/* Printable invoice area */}
         <div id="print-area" className={invoicePreviewStyles.printArea}>
