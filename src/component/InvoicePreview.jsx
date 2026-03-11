@@ -364,7 +364,7 @@ export default function InvoicePreview() {
     }, 500);
   }, [invoice]);
 
- const handlePayment = async () => {
+const handlePayment = async () => {
   try {
     const token = await obtainToken();
 
@@ -383,12 +383,41 @@ export default function InvoicePreview() {
     const order = data.order || data;
 
     const options = {
-      key: "rzp_test_xxxxx",
+      key: "rzp_test_xxxxx",   // replace with your Razorpay test key
       amount: order.amount,
       currency: "INR",
       name: "Invoice Genius",
       description: "Invoice Payment",
       order_id: order.id,
+
+      handler: async function (response) {
+
+        alert("Payment Successful");
+
+        await fetch(`${API_BASE}/api/payment/update-payment`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            invoiceId: invoice.id,
+            paymentId: response.razorpay_payment_id,
+          }),
+        });
+
+        window.location.reload();
+      },
+
+      prefill: {
+        name: client?.name || "",
+        email: client?.email || "",
+        contact: client?.phone || "",
+      },
+
+      theme: {
+        color: "#16a34a",
+      },
     };
 
     const razor = new window.Razorpay(options);
