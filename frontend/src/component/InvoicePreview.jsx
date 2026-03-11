@@ -353,6 +353,7 @@ export default function InvoicePreview() {
       "_"
     )}`;
 
+
     const prevTitle = document.title;
     document.title = safe;
     window.print();
@@ -362,6 +363,59 @@ export default function InvoicePreview() {
       document.title = prevTitle;
     }, 500);
   }, [invoice]);
+
+  const handlePayment = async () => {
+  try {
+
+    const token = await obtainToken();
+
+    const res = await fetch(`${API_BASE}/api/payment/create-order`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        amount: total*100,
+      }),
+    });
+
+    const order = await res.json();
+
+    const options = {
+     key: "rzp_live_SPnxCBbAompnt1", // replace with your Razorpay Key ID
+      amount: order.amount,
+      currency: "INR",
+      name: "Invoice Genius",
+      description: "Invoice Payment",
+      order_id: order.id,
+
+      handler: async function () {
+
+        alert("Payment Successful!");
+
+        await fetch(`${API_BASE}/api/invoices/${invoice.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            status: "paid",
+          }),
+        });
+        window.location.reload();
+      },
+    };
+
+    const razor = new window.Razorpay(options);
+    razor.open();
+
+  } catch (err) {
+    console.error(err);
+    alert("Payment failed");
+  }
+};
 
   if (!invoice && (loadingInvoice || profileLoading)) {
     return <div className="p-6">Loading…</div>;
@@ -454,26 +508,36 @@ export default function InvoicePreview() {
             </p>
           </div>
 
-          <div className={invoicePreviewStyles.headerActions}>
-            <button
-              onClick={() =>
-                navigate(`/app/invoices/${invoice.id}/edit`, {
-                  state: { invoice },
-                })
-              }
-              className={invoicePreviewStyles.editInvoiceButton}
-            >
-              <EditIcon className="w-4 h-4" /> Edit Invoice
-            </button>
+        <div className={invoicePreviewStyles.headerActions}>
+  <button
+    onClick={() =>
+      navigate(`/app/invoices/${invoice.id}/edit`, {
+        state: { invoice },
+      })
+    }
+    className={invoicePreviewStyles.editInvoiceButton}
+  >
+    <EditIcon className="w-4 h-4" /> Edit Invoice
+  </button>
 
-            <button
-              onClick={handlePrint}
-              className={invoicePreviewStyles.printButton}
-            >
-              <PrintIcon className="w-4 h-4" /> Print / Save as PDF
-            </button>
-          </div>
-        </div>
+  <button
+    onClick={handlePrint}
+    className={invoicePreviewStyles.printButton}
+  >
+    <PrintIcon className="w-4 h-4" /> Print / Save as PDF
+  </button>
+
+  {/* Pay Button */}
+  {invoice.status !== "paid" && (
+    <button
+      onClick={handlePayment}
+      className="bg-green-600 text-white px-4 py-2 rounded-lg"
+    >
+      Pay Now
+    </button>
+  )}
+</div>
+</div>  
 
         {/* Printable invoice area */}
         <div id="print-area" className={invoicePreviewStyles.printArea}>

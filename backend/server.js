@@ -56,11 +56,15 @@ app.get("/api/health", (req, res) => {
 
 /* ---------------- API ROUTES ---------------- */
 
+/* ---------------- API ROUTES ---------------- */
+
 app.use("/api/invoices", requireAuth(), invoiceRouter);
 
 app.use("/api/business-profile", requireAuth(), bussinessProfileRouter);
 
 app.use("/api/ai-invoices", requireAuth(), aiInvoiceRouter);
+
+app.use("/api/payment", requireAuth(), paymentRouter);
 
 /* ---------------- ERROR HANDLER ---------------- */
 
