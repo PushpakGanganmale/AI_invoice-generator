@@ -9,24 +9,27 @@ import {
 
 const bussinessProfileRouter = express.Router();
 
+/* GET PROFILE */
 bussinessProfileRouter.get("/me", getBussinessProfile);
 
+/* CREATE PROFILE */
 bussinessProfileRouter.post(
   "/",
   upload.fields([
-    { name: "logoName", maxCount: 1 },
-    { name: "stampName", maxCount: 1 },
-    { name: "signatureNameMeta", maxCount: 1 }
+    { name: "logo", maxCount: 1 },
+    { name: "stamp", maxCount: 1 },
+    { name: "signature", maxCount: 1 }
   ]),
   createBussinessProfile
 );
 
+/* UPDATE PROFILE */
 bussinessProfileRouter.put(
   "/:id",
   upload.fields([
-    { name: "logoName", maxCount: 1 },
-    { name: "stampName", maxCount: 1 },
-    { name: "signatureNameMeta", maxCount: 1 }
+    { name: "logo", maxCount: 1 },
+    { name: "stamp", maxCount: 1 },
+    { name: "signature", maxCount: 1 }
   ]),
   updateBussinessProfile
 );
