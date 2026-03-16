@@ -119,9 +119,9 @@ export default function BusinessProfile() {
       });
 
       // Append files (using your server's expected field names)
-      if (files.logo) fd.append("logoName", files.logo);
-      if (files.stamp) fd.append("stampName", files.stamp);
-      if (files.signature) fd.append("signatureNameMeta", files.signature);
+      if (files.logo) fd.append("logo", files.logo);
+if (files.stamp) fd.append("stamp", files.stamp);
+if (files.signature) fd.append("signature", files.signature);
 
      const url = meta.profileId 
   ? `${API_BASE}/api/business-profile/${meta.profileId}` 
