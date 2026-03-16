@@ -185,10 +185,10 @@ cd ai_invoice_generator
 Install dependencies
 
 ```bash
-cd client
+cd frontend
 npm install
 
-cd ../server
+cd ../backend
 npm install
 ```
 
@@ -218,14 +218,14 @@ CLERK_SECRET_KEY=your_clerk_key
 Start backend
 
 ```bash
-cd server
+cd backend
 npm run dev
 ```
 
 Start frontend
 
 ```bash
-cd client
+cd frontend
 npm run dev
 ```
 
