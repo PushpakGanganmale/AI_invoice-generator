@@ -63,6 +63,13 @@ remainingAmount: { type: Number, default: 0 },
 
 notes: { type: String, default: "" },
 terms: { type: String, default: "" },
+
+/* Razorpay fields */
+
+razorpayOrderId: { type: String, default: null },
+razorpayPaymentId: { type: String, default: null },
+razorpaySignature: { type: String, default: null }
+
 },
 { timestamps: true }
 );
@@ -104,6 +111,7 @@ InvoiceSchema.index(
 InvoiceSchema.index({ owner: 1, createdAt: -1 });
 
 const Invoice =
-mongoose.models.Invoice || mongoose.model("Invoice", InvoiceSchema);
+mongoose.models.Invoice ||
+mongoose.model("Invoice", InvoiceSchema);
 
 export default Invoice;
