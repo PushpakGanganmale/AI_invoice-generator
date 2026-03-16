@@ -3,7 +3,6 @@ import BussinessProfile from "../models/bussinessProfileModel.js";
 /* CREATE PROFILE */
 export const createBussinessProfile = async (req, res) => {
   try {
-    // FIX: req.auth is an object, not a function
     const auth = req.auth;
     const userId = auth?.userId;
 
@@ -40,10 +39,10 @@ export const createBussinessProfile = async (req, res) => {
   }
 };
 
+
 /* UPDATE PROFILE */
 export const updateBussinessProfile = async (req, res) => {
   try {
-    // FIX: req.auth is an object, not a function
     const auth = req.auth;
     const userId = auth?.userId;
     const { id } = req.params;
@@ -52,9 +51,23 @@ export const updateBussinessProfile = async (req, res) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
+    const updateData = { ...req.body };
+
+    if (req.files?.logoName?.[0]) {
+      updateData.logoUrl = req.files.logoName[0].filename;
+    }
+
+    if (req.files?.stampName?.[0]) {
+      updateData.stampUrl = req.files.stampName[0].filename;
+    }
+
+    if (req.files?.signatureNameMeta?.[0]) {
+      updateData.signatureUrl = req.files.signatureNameMeta[0].filename;
+    }
+
     const updatedProfile = await BussinessProfile.findOneAndUpdate(
       { _id: id, owner: userId },
-      { ...req.body },
+      updateData,
       { new: true, runValidators: true }
     );
 
@@ -70,10 +83,10 @@ export const updateBussinessProfile = async (req, res) => {
   }
 };
 
+
 /* GET PROFILE */
 export const getBussinessProfile = async (req, res) => {
   try {
-    // FIX: req.auth is an object, not a function
     const auth = req.auth;
     const userId = auth?.userId;
 

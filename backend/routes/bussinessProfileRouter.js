@@ -1,4 +1,5 @@
 import express from "express";
+import upload from "../middleware/upload.js";
 
 import {
   createBussinessProfile,
@@ -8,13 +9,26 @@ import {
 
 const bussinessProfileRouter = express.Router();
 
-/* GET BUSINESS PROFILE */
 bussinessProfileRouter.get("/me", getBussinessProfile);
 
-/* CREATE PROFILE */
-bussinessProfileRouter.post("/", createBussinessProfile);
+bussinessProfileRouter.post(
+  "/",
+  upload.fields([
+    { name: "logoName", maxCount: 1 },
+    { name: "stampName", maxCount: 1 },
+    { name: "signatureNameMeta", maxCount: 1 }
+  ]),
+  createBussinessProfile
+);
 
-/* UPDATE PROFILE */
-bussinessProfileRouter.put("/:id", updateBussinessProfile);
+bussinessProfileRouter.put(
+  "/:id",
+  upload.fields([
+    { name: "logoName", maxCount: 1 },
+    { name: "stampName", maxCount: 1 },
+    { name: "signatureNameMeta", maxCount: 1 }
+  ]),
+  updateBussinessProfile
+);
 
 export default bussinessProfileRouter;
