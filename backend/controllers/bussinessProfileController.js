@@ -5,24 +5,21 @@ import BussinessProfile from "../models/bussinessProfileModel.js";
 export const createBussinessProfile = async (req, res) => {
   try {
 
-    const auth = req.auth;
-    const userId = auth?.userId;
+    const userId = req.auth?.userId;
 
     if (!userId) {
       return res.status(401).json({
-        success: false,
-        message: "Unauthorized"
+        success:false,
+        message:"Unauthorized"
       });
     }
 
-    const existingProfile = await BussinessProfile.findOne({
-      owner: userId
-    });
+    const existing = await BussinessProfile.findOne({ owner:userId });
 
-    if (existingProfile) {
+    if (existing) {
       return res.status(400).json({
-        success: false,
-        message: "Business profile already exists"
+        success:false,
+        message:"Business profile already exists"
       });
     }
 
@@ -31,123 +28,131 @@ export const createBussinessProfile = async (req, res) => {
     const signature = req.files?.signature?.[0]?.filename || null;
 
     const profile = await BussinessProfile.create({
-      ...req.body,
-      owner: userId,
-      logoUrl: logo,
-      stampUrl: stamp,
-      signatureUrl: signature
+      owner:userId,
+      businessName:req.body.businessName,
+      email:req.body.email,
+      phone:req.body.phone,
+      address:req.body.address,
+      gst:req.body.gst,
+      logoUrl:logo,
+      stampUrl:stamp,
+      signatureUrl:signature
     });
 
     res.status(201).json({
-      success: true,
-      data: profile
+      success:true,
+      data:profile
     });
 
-  } catch (error) {
+  } catch(err) {
 
-    console.error("Create Profile Error:", error);
+    console.error("CREATE PROFILE ERROR:",err);
 
     res.status(500).json({
-      success: false,
-      message: "Error creating business profile"
+      success:false,
+      message:"Server error"
     });
 
   }
 };
+
 
 
 /* UPDATE PROFILE */
 
-export const updateBussinessProfile = async (req, res) => {
-  try {
+export const updateBussinessProfile = async (req,res)=>{
+  try{
 
-    const auth = req.auth;
-    const userId = auth?.userId;
+    const userId = req.auth?.userId;
     const { id } = req.params;
 
-    if (!userId) {
+    if(!userId){
       return res.status(401).json({
-        success: false,
-        message: "Unauthorized"
+        success:false,
+        message:"Unauthorized"
       });
     }
 
-    const updateData = { ...req.body };
+    const updateData = {
+      businessName:req.body.businessName,
+      email:req.body.email,
+      phone:req.body.phone,
+      address:req.body.address,
+      gst:req.body.gst
+    };
 
-    if (req.files?.logo?.[0]) {
+    if(req.files?.logo?.[0]){
       updateData.logoUrl = req.files.logo[0].filename;
     }
 
-    if (req.files?.stamp?.[0]) {
+    if(req.files?.stamp?.[0]){
       updateData.stampUrl = req.files.stamp[0].filename;
     }
 
-    if (req.files?.signature?.[0]) {
+    if(req.files?.signature?.[0]){
       updateData.signatureUrl = req.files.signature[0].filename;
     }
 
-    const updatedProfile = await BussinessProfile.findOneAndUpdate(
-      { _id: id, owner: userId },
+    const updated = await BussinessProfile.findOneAndUpdate(
+      { _id:id, owner:userId },
       updateData,
-      { new: true, runValidators: true }
+      { new:true }
     );
 
-    if (!updatedProfile) {
+    if(!updated){
       return res.status(404).json({
-        success: false,
-        message: "Profile not found"
+        success:false,
+        message:"Profile not found"
       });
     }
 
-    res.status(200).json({
-      success: true,
-      data: updatedProfile
+    res.json({
+      success:true,
+      data:updated
     });
 
-  } catch (error) {
+  }catch(err){
 
-    console.error("Update Profile Error:", error);
+    console.error("UPDATE PROFILE ERROR:",err);
 
     res.status(500).json({
-      success: false,
-      message: "Error updating business profile"
+      success:false,
+      message:"Server error"
     });
 
   }
 };
 
 
+
 /* GET PROFILE */
 
-export const getBussinessProfile = async (req, res) => {
-  try {
+export const getBussinessProfile = async (req,res)=>{
+  try{
 
-    const auth = req.auth;
-    const userId = auth?.userId;
+    const userId = req.auth?.userId;
 
-    if (!userId) {
+    if(!userId){
       return res.status(401).json({
-        success: false,
-        message: "Unauthorized"
+        success:false,
+        message:"Unauthorized"
       });
     }
 
-    const profile = await BussinessProfile.findOne({
-      owner: userId
+    const profile = await BussinessProfile.findOne({ owner:userId });
+
+    res.json({
+      success:true,
+      data:profile
     });
 
-    res.status(200).json({
-      success: true,
-      data: profile
-    });
+  }catch(err){
 
-  } catch (error) {
-
-    console.error("Fetch Profile Error:", error);
+    console.error("GET PROFILE ERROR:",err);
 
     res.status(500).json({
-      success: false,
-      message: "Error fetching business profile"
+      success:false,
+      message:"Server error"
     });
 
   }
