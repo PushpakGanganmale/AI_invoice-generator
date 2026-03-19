@@ -21,7 +21,6 @@ router.post("/generate", async (req, res) => {
       });
     }
 
-    // 🔥 PRODUCTION-LEVEL PROMPT (WITH EXAMPLES)
     const userPrompt = `
 Extract structured invoice data from the input.
 
@@ -104,9 +103,8 @@ Now process:
 ${prompt}
 `;
 
-    // 🔥 CORRECT LLM CALL
     const completion = await groq.chat.completions.create({
-      model: "llama-3.1-70b-versatile", // 🔥 better extraction
+      model: "llama-3.3-70b-versatile", // ✅ FIXED: updated from deprecated llama-3.1-70b-versatile
       messages: [
         {
           role: "system",
@@ -125,7 +123,6 @@ ${prompt}
 
     console.log("RAW AI OUTPUT:", text);
 
-    // 🔥 CLEAN RESPONSE SAFELY
     const clean = text
       .replace(/```json/g, "")
       .replace(/```/g, "")
@@ -147,7 +144,6 @@ ${prompt}
       });
     }
 
-    // 🔥 BACKEND CALCULATION (IMPORTANT)
     const subtotal = parsed.items.reduce(
       (sum, item) => sum + item.qty * item.unitPrice,
       0
