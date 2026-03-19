@@ -37,8 +37,8 @@ export const createBussinessProfile = async (req, res) => {
       logoUrl: logo,
       stampUrl: stamp,
       signatureUrl: signature,
-      signatureName: req.body.signatureName || "",  // ✅ ADDED
-      signatureTitle: req.body.signatureTitle || "", // ✅ ADDED
+      signatureName: req.body.signatureName || "",
+      signatureTitle: req.body.signatureTitle || "",
     });
 
     res.status(201).json({
@@ -76,8 +76,8 @@ export const updateBussinessProfile = async (req, res) => {
       phone: req.body.phone,
       address: req.body.address,
       gst: req.body.gst,
-      signatureName: req.body.signatureName || "",  // ✅ ADDED
-      signatureTitle: req.body.signatureTitle || "", // ✅ ADDED
+      signatureName: req.body.signatureName || "",
+      signatureTitle: req.body.signatureTitle || "",
     };
 
     if (req.files?.logo?.[0]) {
