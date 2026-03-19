@@ -12,7 +12,6 @@ const groq = new Groq({
 
 router.post("/generate", async (req, res) => {
   try {
-
     const { prompt } = req.body;
 
     if (!prompt) {
@@ -22,11 +21,19 @@ router.post("/generate", async (req, res) => {
       });
     }
 
-    const systemPrompt = `
-Convert the user request into invoice JSON.
+    // 🔥 PRODUCTION-LEVEL PROMPT (WITH EXAMPLES)
+    const userPrompt = `
+Extract structured invoice data from the input.
 
-Return ONLY JSON.
+Return ONLY valid JSON. No explanation.
 
+Strict rules:
+- Extract item name separately (NOT full sentence)
+- Extract quantity and unitPrice correctly
+- NEVER put full input in description
+- Split multiple items
+
+Schema:
 {
   "client":{
     "name":"",
@@ -43,60 +50,129 @@ Return ONLY JSON.
   ]
 }
 
-User request:
+Example 1:
+
+Input:
+"2 laptops 50000 each for Rahul Sharma"
+
+Output:
+{
+  "client": {
+    "name": "Rahul Sharma",
+    "email": "",
+    "address": "",
+    "phone": ""
+  },
+  "items": [
+    {
+      "description": "Laptop",
+      "qty": 2,
+      "unitPrice": 50000
+    }
+  ]
+}
+
+Example 2:
+
+Input:
+"3 chairs 2000 each and 2 tables 5000 each for Amit"
+
+Output:
+{
+  "client": {
+    "name": "Amit",
+    "email": "",
+    "address": "",
+    "phone": ""
+  },
+  "items": [
+    {
+      "description": "Chair",
+      "qty": 3,
+      "unitPrice": 2000
+    },
+    {
+      "description": "Table",
+      "qty": 2,
+      "unitPrice": 5000
+    }
+  ]
+}
+
+Now process:
+
 ${prompt}
 `;
-const completion = await groq.chat.completions.create({
-  model: "llama-3.1-8b-instant",
-  messages: [
-    {
-      role: "user",
-      content: systemPrompt,
-    },
-  ],
-});
 
-    const text = completion.choices[0].message.content || "";
+    // 🔥 CORRECT LLM CALL
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.1-70b-versatile", // 🔥 better extraction
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a strict JSON generator. Always return only valid JSON. Never include explanations.",
+        },
+        {
+          role: "user",
+          content: userPrompt,
+        },
+      ],
+      temperature: 0,
+    });
 
+    const text = completion.choices[0]?.message?.content || "";
+
+    console.log("RAW AI OUTPUT:", text);
+
+    // 🔥 CLEAN RESPONSE SAFELY
     const clean = text
       .replace(/```json/g, "")
       .replace(/```/g, "")
+      .replace(/^[^{]*/, "")
+      .replace(/[^}]*$/, "")
       .trim();
 
     let parsed;
 
     try {
       parsed = JSON.parse(clean);
-    } catch {
-      throw new Error("Invalid JSON returned by AI");
+    } catch (err) {
+      console.error("JSON PARSE ERROR:", clean);
+
+      return res.status(500).json({
+        success: false,
+        message: "Invalid JSON returned by AI",
+        raw: text,
+      });
     }
 
-    return res.json({
-      success: true,
-      data: parsed,
-    });
+    // 🔥 BACKEND CALCULATION (IMPORTANT)
+    const subtotal = parsed.items.reduce(
+      (sum, item) => sum + item.qty * item.unitPrice,
+      0
+    );
 
-  } catch (err) {
-
-    console.error("AI Error:", err.message);
+    const taxRate = 18;
+    const taxAmount = (subtotal * taxRate) / 100;
+    const total = subtotal + taxAmount;
 
     return res.json({
       success: true,
       data: {
-        client: {
-          name: "Client",
-          email: "",
-          address: "",
-          phone: "",
-        },
-        items: [
-          {
-            description: req.body.prompt || "Service",
-            qty: 1,
-            unitPrice: 0,
-          },
-        ],
+        ...parsed,
+        subtotal,
+        taxRate,
+        taxAmount,
+        total,
       },
+    });
+  } catch (err) {
+    console.error("AI ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong in AI generation",
     });
   }
 });
