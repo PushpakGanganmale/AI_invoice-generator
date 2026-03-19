@@ -17,8 +17,8 @@ const bussinessProfileSchema = new mongoose.Schema(
     stampUrl: String,
     signatureUrl: String,
 
-   signatureOwnerName: { type: String, default: "" },
-signatureOwnerTitle: { type: String, default: "" },
+    signatureOwnerName: { type: String, default: "" },  // ✅ FIXED
+    signatureOwnerTitle: { type: String, default: "" }, // ✅ FIXED
   },
   { timestamps: true }
 );
