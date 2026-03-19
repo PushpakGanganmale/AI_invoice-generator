@@ -16,6 +16,10 @@ const bussinessProfileSchema = new mongoose.Schema(
     logoUrl: String,
     stampUrl: String,
     signatureUrl: String,
+
+    // ✅ FIXED: added missing signature details
+    signatureName: { type: String, default: "" },
+    signatureTitle: { type: String, default: "" },
   },
   { timestamps: true }
 );
