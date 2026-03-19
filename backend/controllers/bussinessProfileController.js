@@ -37,8 +37,8 @@ export const createBussinessProfile = async (req, res) => {
       logoUrl: logo,
       stampUrl: stamp,
       signatureUrl: signature,
-      signatureName: req.body.signatureName || "",
-      signatureTitle: req.body.signatureTitle || "",
+     signatureOwnerName: req.body.signatureOwnerName || "",
+signatureOwnerTitle: req.body.signatureOwnerTitle || "",
     });
 
     res.status(201).json({
