@@ -10,45 +10,19 @@ const INVOICE_ENDPOINT = (id) => `${API_BASE}/api/invoices/${id}`;
 function resolveImageUrl(url) {
   if (!url) return null;
   const s = String(url).trim();
-  // data URI -> return directly
-  if (s.startsWith("data:")) {
-    console.debug("[resolveImageUrl] data URI", s.slice(0, 40) + "...");
-    return s;
-  }
-
+  if (s.startsWith("data:")) return s;
   if (/localhost|127\.0\.0\.1/.test(s)) {
     try {
       const parsed = new URL(s);
-      const path =
-        parsed.pathname + (parsed.search || "") + (parsed.hash || "");
-      const resolved = `${API_BASE.replace(/\/+$/, "")}${path}`;
-      console.debug("[resolveImageUrl] rewritten localhost ->", {
-        orig: s,
-        resolved,
-      });
-      return resolved;
+      const path = parsed.pathname + (parsed.search || "") + (parsed.hash || "");
+      return `${API_BASE.replace(/\/+$/, "")}${path}`;
     } catch (e) {
-      // fallback: strip host prefix
       const path = s.replace(/^https?:\/\/[^/]+/, "");
-      const resolved = `${API_BASE.replace(/\/+$/, "")}${path}`;
-      console.debug("[resolveImageUrl] fallback rewrite localhost ->", {
-        orig: s,
-        resolved,
-      });
-      return resolved;
+      return `${API_BASE.replace(/\/+$/, "")}${path}`;
     }
   }
-
-  // absolute http(s) -> return as-is
-  if (/^https?:\/\//i.test(s)) {
-    console.debug("[resolveImageUrl] absolute URL", s);
-    return s;
-  }
-
-  // relative path like "/uploads/..." or "uploads/..."
-  const resolved = `${API_BASE.replace(/\/+$/, "")}/${s.replace(/^\/+/, "")}`;
-  console.debug("[resolveImageUrl] relative ->", { orig: s, resolved });
-  return resolved;
+  if (/^https?:\/\//i.test(s)) return s;
+  return `${API_BASE.replace(/\/+$/, "")}/${s.replace(/^\/+/, "")}`;
 }
 
 function readJSON(key, fallback = null) {
@@ -116,8 +90,7 @@ function formatDate(dateInput) {
 
 function normalizeClient(raw) {
   if (!raw) return { name: "", email: "", address: "", phone: "" };
-  if (typeof raw === "string")
-    return { name: raw, email: "", address: "", phone: "" };
+  if (typeof raw === "string") return { name: raw, email: "", address: "", phone: "" };
   if (typeof raw === "object") {
     return {
       name: raw.name ?? raw.company ?? raw.client ?? "",
@@ -131,37 +104,19 @@ function normalizeClient(raw) {
 
 /* ----------------- icons ----------------- */
 const PrintIcon = ({ className = "w-4 h-4" }) => (
-  <svg
-    className={className}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-  >
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
     <path d="M6 14h12v8H6z" />
   </svg>
 );
 const EditIcon = ({ className = "w-4 h-4" }) => (
-  <svg
-    className={className}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-  >
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
   </svg>
 );
 const ArrowLeftIcon = ({ className = "w-4 h-4" }) => (
-  <svg
-    className={className}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-  >
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M19 12H5M12 19l-7-7 7-7" />
   </svg>
 );
@@ -176,13 +131,8 @@ export default function InvoicePreview() {
     ? useAuth()
     : { getToken: null, isSignedIn: false };
 
-  const invoiceFromState = loc?.state?.invoice ?? null;
-  const [invoice, setInvoice] = useState(() =>
-    invoiceFromState ? invoiceFromState : null
-  );
-  const [loadingInvoice, setLoadingInvoice] = useState(
-    !invoiceFromState && Boolean(id)
-  );
+  const [invoice, setInvoice] = useState(null);
+  const [loadingInvoice, setLoadingInvoice] = useState(true); // ✅ always load fresh
   const [invoiceError, setInvoiceError] = useState(null);
 
   const [profile, setProfile] = useState(
@@ -196,19 +146,18 @@ export default function InvoicePreview() {
     if (typeof getToken !== "function") return null;
     try {
       let token = await getToken().catch(() => null);
-      if (!token)
-        token = await getToken({ forceRefresh: true }).catch(() => null);
+      if (!token) token = await getToken({ forceRefresh: true }).catch(() => null);
       return token;
     } catch {
       return null;
     }
   }, [getToken]);
 
-
+  // ✅ FIXED: always fetch fresh from server, never use stale router state
   useEffect(() => {
     let mounted = true;
     async function fetchInvoice() {
-      if (!id || invoiceFromState) return;
+      if (!id) return;
       setLoadingInvoice(true);
       setInvoiceError(null);
       try {
@@ -216,26 +165,19 @@ export default function InvoicePreview() {
         const headers = { Accept: "application/json" };
         if (token) headers["Authorization"] = `Bearer ${token}`;
 
-        const res = await fetch(INVOICE_ENDPOINT(id), {
-          method: "GET",
-          headers,
-        });
+        const res = await fetch(INVOICE_ENDPOINT(id), { method: "GET", headers });
         if (res.ok) {
           const json = await res.json().catch(() => null);
           const data = json?.data ?? json ?? null;
           if (mounted && data) {
-            const normalized = {
+            setInvoice({
               ...data,
               id: data._id ?? data.id ?? id,
-              items: Array.isArray(data.items)
-                ? data.items
-                : data.items
-                ? [...data.items]
-                : [],
-              invoiceNumber: data.invoiceNumber ?? data.invoiceNumber ?? "",
+              items: Array.isArray(data.items) ? data.items : [],
+              invoiceNumber: data.invoiceNumber ?? "",
               currency: data.currency || "INR",
-            };
-            setInvoice(normalized);
+            });
+            setLoadingInvoice(false);
             return;
           }
         } else {
@@ -243,8 +185,10 @@ export default function InvoicePreview() {
         }
       } catch (err) {
         console.warn("Error fetching invoice:", err);
-      } finally {
-        if (!mounted) return;
+      }
+
+      // fallback to localStorage only if server fetch failed
+      if (mounted) {
         const all = getStoredInvoices();
         const found = all.find(
           (x) => x && (x.id === id || x._id === id || x.invoiceNumber === id)
@@ -255,11 +199,8 @@ export default function InvoicePreview() {
       }
     }
     fetchInvoice();
-    return () => {
-      mounted = false;
-    };
-  }, [id, invoiceFromState, obtainToken]);
-
+    return () => { mounted = false; };
+  }, [id, obtainToken]); // ✅ removed invoiceFromState — always fetches fresh
 
   useEffect(() => {
     let mounted = true;
@@ -271,45 +212,28 @@ export default function InvoicePreview() {
         if (token) headers["Authorization"] = `Bearer ${token}`;
 
         const res = await fetch(PROFILE_ENDPOINT, { method: "GET", headers });
-        if (!res.ok) {
-          console.warn("Profile fetch returned non-ok:", res.status);
-          setProfileLoading(false);
-          return;
-        }
+        if (!res.ok) { setProfileLoading(false); return; }
+
         const json = await res.json().catch(() => null);
         const data = json?.data ?? json ?? null;
         if (mounted && data && typeof data === "object") {
           const normalized = {
-            businessName:
-              data.businessName ?? data.name ?? defaultProfile.businessName,
+            businessName: data.businessName ?? data.name ?? defaultProfile.businessName,
             email: data.email ?? defaultProfile.email,
             address: data.address ?? defaultProfile.address,
             phone: data.phone ?? defaultProfile.phone,
             gst: data.gst ?? defaultProfile.gst,
-            stampDataUrl:
-              data.stampUrl ?? data.stampDataUrl ?? defaultProfile.stampDataUrl,
-            signatureDataUrl:
-              data.signatureUrl ??
-              data.signatureDataUrl ??
-              defaultProfile.signatureDataUrl,
-            logoDataUrl:
-              data.logoUrl ?? data.logoDataUrl ?? defaultProfile.logoDataUrl,
+            stampDataUrl: data.stampUrl ?? data.stampDataUrl ?? defaultProfile.stampDataUrl,
+            signatureDataUrl: data.signatureUrl ?? data.signatureDataUrl ?? defaultProfile.signatureDataUrl,
+            logoDataUrl: data.logoUrl ?? data.logoDataUrl ?? defaultProfile.logoDataUrl,
             defaultTaxPercent: Number.isFinite(Number(data.defaultTaxPercent))
               ? Number(data.defaultTaxPercent)
               : defaultProfile.defaultTaxPercent,
-            signatureName:
-              data.signatureOwnerName ??
-              data.signatureName ??
-              defaultProfile.signatureName,
-            signatureTitle:
-              data.signatureOwnerTitle ??
-              data.signatureTitle ??
-              defaultProfile.signatureTitle,
+            signatureName: data.signatureOwnerName ?? data.signatureName ?? defaultProfile.signatureName,
+            signatureTitle: data.signatureOwnerTitle ?? data.signatureTitle ?? defaultProfile.signatureTitle,
           };
           setProfile(normalized);
-          try {
-            writeJSON("business_profile", normalized);
-          } catch {}
+          try { writeJSON("business_profile", normalized); } catch {}
         }
       } catch (err) {
         console.warn("Error fetching profile:", err);
@@ -320,155 +244,125 @@ export default function InvoicePreview() {
 
     const stored = readJSON("business_profile", null);
     if (!stored) fetchProfile();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [obtainToken]);
-
 
   useEffect(() => {
     if (!invoice) return;
-    const invoiceNumber =
-      invoice.invoiceNumber || invoice.id || `invoice-${Date.now()}`;
-    const safe = `Invoice-${String(invoiceNumber).replace(
-      /[^\w\-_.() ]/g,
-      "_"
-    )}`;
+    const invoiceNumber = invoice.invoiceNumber || invoice.id || `invoice-${Date.now()}`;
+    const safe = `Invoice-${String(invoiceNumber).replace(/[^\w\-_.() ]/g, "_")}`;
     const prev = prevTitleRef.current ?? document.title;
     if (document.title !== safe) document.title = safe;
-    return () => {
-      try {
-        document.title = prev;
-      } catch {}
-    };
+    return () => { try { document.title = prev; } catch {} };
   }, [invoice]);
 
-
   const handlePrint = useCallback(() => {
-    const invoiceNumber =
-      (invoice && (invoice.invoiceNumber || invoice.id)) ||
-      `invoice-${Date.now()}`;
-    const safe = `Invoice-${String(invoiceNumber).replace(
-      /[^\w\-_.() ]/g,
-      "_"
-    )}`;
-
-
+    const invoiceNumber = (invoice && (invoice.invoiceNumber || invoice.id)) || `invoice-${Date.now()}`;
+    const safe = `Invoice-${String(invoiceNumber).replace(/[^\w\-_.() ]/g, "_")}`;
     const prevTitle = document.title;
     document.title = safe;
     window.print();
-
-    // Restore title after a delay
-    setTimeout(() => {
-      document.title = prevTitle;
-    }, 500);
+    setTimeout(() => { document.title = prevTitle; }, 500);
   }, [invoice]);
 
-const handlePayment = async () => {
-  try {
-    const token = await obtainToken();
+  const handlePayment = async () => {
+    try {
+      const token = await obtainToken();
 
-    const res = await fetch(`${API_BASE}/api/payment/create-order`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        invoiceId: invoice._id || invoice.id,
-      }),
-    });
+      const res = await fetch(`${API_BASE}/api/payment/create-order`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          invoiceId: invoice._id || invoice.id,
+        }),
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (!data?.success || !data?.order) {
-      console.error("Invalid order response", data);
-      alert(data?.message || "Payment initialization failed");
-      return;
+      if (!data?.success || !data?.order) {
+        alert(data?.message || "Payment initialization failed");
+        return;
+      }
+
+      const order = data.order;
+      const remainingAmount = data.remainingAmount; // ✅ correct remaining from backend
+
+      const options = {
+        key: "rzp_live_SPnxCBbAompnt1",
+        amount: order.amount,
+        currency: "INR",
+        name: "Invoice Genius",
+        description: `Invoice Payment - Remaining: ₹${remainingAmount}`,
+        order_id: order.id,
+
+        handler: async function (response) {
+          await fetch(`${API_BASE}/api/payment/update-payment`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              invoiceId: invoice._id || invoice.id,
+              amount: remainingAmount, // ✅ correct amount
+            }),
+          });
+
+          // ✅ fetch fresh invoice after payment
+          const freshRes = await fetch(INVOICE_ENDPOINT(invoice._id || invoice.id), {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const freshData = await freshRes.json();
+          if (freshData?.data) {
+            setInvoice({ ...freshData.data, id: freshData.data._id });
+          }
+
+          alert("Payment Successful!");
+        },
+
+        prefill: {
+          name: client?.name || "",
+          email: client?.email || "",
+          contact: client?.phone || "",
+        },
+
+        theme: { color: "#16a34a" },
+      };
+
+      const razor = new window.Razorpay(options);
+      razor.open();
+
+    } catch (err) {
+      console.error(err);
+      alert("Payment failed");
     }
+  };
 
-    const order = data.order;
-    const remainingAmount = data.remainingAmount; // ✅ use remaining amount from backend
-
-    const options = {
-      key: "rzp_live_SPnxCBbAompnt1",
-      amount: order.amount, // already correct paise from backend
-      currency: "INR",
-      name: "Invoice Genius",
-      description: `Invoice Payment - Remaining: ₹${remainingAmount}`, // ✅ shows correct amount
-      order_id: order.id,
-
-      handler: async function (response) {
-        alert("Payment Successful");
-
-        await fetch(`${API_BASE}/api/payment/update-payment`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            invoiceId: invoice._id || invoice.id,
-            amount: remainingAmount, // ✅ FIXED: send actual remaining amount not order.amount/100
-          }),
-        });
-
-        window.location.reload();
-      },
-
-      prefill: {
-        name: client?.name || "",
-        email: client?.email || "",
-        contact: client?.phone || "",
-      },
-
-      theme: {
-        color: "#16a34a",
-      },
-    };
-
-    const razor = new window.Razorpay(options);
-    razor.open();
-
-  } catch (err) {
-    console.error(err);
-    alert("Payment failed");
-  }
-};
-
-  if (!invoice && (loadingInvoice || profileLoading)) {
+  if (loadingInvoice || profileLoading) {
     return <div className="p-6">Loading…</div>;
   }
+
   if (!invoice) {
     return (
       <div className={invoicePreviewStyles.pageContainer}>
         <div className={invoicePreviewStyles.emptyStateContainer}>
           <div className={invoicePreviewStyles.emptyStateCard}>
             <div className={invoicePreviewStyles.emptyStateIconContainer}>
-              <svg
-                className={invoicePreviewStyles.emptyStateIcon}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
+              <svg className={invoicePreviewStyles.emptyStateIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
                 <line x1="15" y1="9" x2="9" y2="15" />
                 <line x1="9" y1="9" x2="15" y2="15" />
               </svg>
             </div>
-            <h3 className={invoicePreviewStyles.emptyStateTitle}>
-              Invoice Not Found
-            </h3>
+            <h3 className={invoicePreviewStyles.emptyStateTitle}>Invoice Not Found</h3>
             <p className={invoicePreviewStyles.emptyStateMessage}>
-              The invoice you're looking for doesn't exist or may have been
-              deleted.
+              The invoice you're looking for doesn't exist or may have been deleted.
             </p>
             <div className="mt-6">
-              <button
-                onClick={() => navigate(-1)}
-                className={invoicePreviewStyles.emptyStateButton}
-              >
+              <button onClick={() => navigate(-1)} className={invoicePreviewStyles.emptyStateButton}>
                 <ArrowLeftIcon className="w-4 h-4" /> Back to Invoices
               </button>
             </div>
@@ -478,28 +372,15 @@ const handlePayment = async () => {
     );
   }
 
-  const items = (
-    invoice.items && Array.isArray(invoice.items) ? invoice.items : []
-  ).filter(Boolean);
-  const subtotal = items.reduce(
-    (s, it) => s + Number(it.qty || 0) * Number(it.unitPrice || 0),
-    0
-  );
-  const taxPercent = Number(
-    invoice.taxPercent ?? profile.defaultTaxPercent ?? 18
-  );
+  const items = (invoice.items && Array.isArray(invoice.items) ? invoice.items : []).filter(Boolean);
+  const subtotal = items.reduce((s, it) => s + Number(it.qty || 0) * Number(it.unitPrice || 0), 0);
+  const taxPercent = Number(invoice.taxPercent ?? profile.defaultTaxPercent ?? 18);
   const tax = (subtotal * taxPercent) / 100;
   const total = subtotal + tax;
 
-  const logo = resolveImageUrl(
-    invoice.logoDataUrl ?? profile.logoDataUrl ?? null
-  );
-  const stamp = resolveImageUrl(
-    invoice.stampDataUrl ?? profile.stampDataUrl ?? null
-  );
-  const signature = resolveImageUrl(
-    invoice.signatureDataUrl ?? profile.signatureDataUrl ?? null
-  );
+  const logo = resolveImageUrl(invoice.logoDataUrl ?? profile.logoDataUrl ?? null);
+  const stamp = resolveImageUrl(invoice.stampDataUrl ?? profile.stampDataUrl ?? null);
+  const signature = resolveImageUrl(invoice.signatureDataUrl ?? profile.signatureDataUrl ?? null);
 
   const signatureName = invoice.signatureName ?? profile.signatureName ?? "";
   const signatureTitle = invoice.signatureTitle ?? profile.signatureTitle ?? "";
@@ -507,145 +388,79 @@ const handlePayment = async () => {
   const client = normalizeClient(invoice.client);
   const invoiceCurrency = invoice.currency || "INR";
 
-
   return (
     <div className={invoicePreviewStyles.pageContainer}>
       <div className={invoicePreviewStyles.container}>
         {/* Header Actions */}
-        <div
-          className={`${invoicePreviewStyles.headerContainer} ${invoicePreviewStyles.noPrint}`}
-        >
+        <div className={`${invoicePreviewStyles.headerContainer} ${invoicePreviewStyles.noPrint}`}>
           <div>
-            <h1 className={invoicePreviewStyles.headerTitle}>
-              Invoice Preview
-            </h1>
+            <h1 className={invoicePreviewStyles.headerTitle}>Invoice Preview</h1>
             <p className={invoicePreviewStyles.headerSubtitle}>
-              Review invoice{" "}
-              <span className={invoicePreviewStyles.headerInvoiceNumber}>
-                #{invoice.invoiceNumber || invoice.id}
-              </span>
+              Review invoice <span className={invoicePreviewStyles.headerInvoiceNumber}>#{invoice.invoiceNumber || invoice.id}</span>
             </p>
           </div>
 
-        <div className={invoicePreviewStyles.headerActions}>
-  <button
-    onClick={() =>
-      navigate(`/app/invoices/${invoice.id}/edit`, {
-        state: { invoice },
-      })
-    }
-    className={invoicePreviewStyles.editInvoiceButton}
-  >
-    <EditIcon className="w-4 h-4" /> Edit Invoice
-  </button>
+          <div className={invoicePreviewStyles.headerActions}>
+            <button
+              onClick={() => navigate(`/app/invoices/${invoice.id}/edit`, { state: { invoice } })}
+              className={invoicePreviewStyles.editInvoiceButton}
+            >
+              <EditIcon className="w-4 h-4" /> Edit Invoice
+            </button>
 
-  <button
-    onClick={handlePrint}
-    className={invoicePreviewStyles.printButton}
-  >
-    <PrintIcon className="w-4 h-4" /> Print / Save as PDF
-  </button>
+            <button onClick={handlePrint} className={invoicePreviewStyles.printButton}>
+              <PrintIcon className="w-4 h-4" /> Print / Save as PDF
+            </button>
 
-  {/* Pay Button */}
-  {invoice.status !== "paid" && (
-    <button
-      onClick={handlePayment}
-      className="bg-green-600 text-white px-4 py-2 rounded-lg"
-    >
-      Pay Now
-    </button>
-  )}
-</div>
-</div>  
+            {invoice.status !== "paid" && (
+              <button onClick={handlePayment} className="bg-green-600 text-white px-4 py-2 rounded-lg">
+                Pay Now
+              </button>
+            )}
+          </div>
+        </div>
 
         {/* Printable invoice area */}
         <div id="print-area" className={invoicePreviewStyles.printArea}>
           <div className={invoicePreviewStyles.printHeader}>
             <div className={invoicePreviewStyles.companyInfo}>
               {logo && (
-                <img
-                  src={logo}
-                  alt="Company Logo"
-                  className={invoicePreviewStyles.logo}
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                  }}
-                />
+                <img src={logo} alt="Company Logo" className={invoicePreviewStyles.logo}
+                  onError={(e) => { e.currentTarget.style.display = "none"; }} />
               )}
               <div>
-                <div className={invoicePreviewStyles.invoiceFromLabel}>
-                  Invoice From
-                </div>
-                <div className={invoicePreviewStyles.companyName}>
-                  {invoice.fromBusinessName || profile.businessName || "—"}
-                </div>
-                <div className={invoicePreviewStyles.companyAddress}>
-                  {invoice.fromAddress || profile.address || "—"}
-                </div>
+                <div className={invoicePreviewStyles.invoiceFromLabel}>Invoice From</div>
+                <div className={invoicePreviewStyles.companyName}>{invoice.fromBusinessName || profile.businessName || "—"}</div>
+                <div className={invoicePreviewStyles.companyAddress}>{invoice.fromAddress || profile.address || "—"}</div>
                 <div className={invoicePreviewStyles.companyContact}>
-                  {invoice.fromEmail || profile.email ? (
-                    <div>
-                      <strong>Email:</strong>{" "}
-                      {invoice.fromEmail || profile.email}
-                    </div>
-                  ) : null}
-                  {invoice.fromPhone || profile.phone ? (
-                    <div>
-                      <strong>Phone:</strong>{" "}
-                      {invoice.fromPhone || profile.phone}
-                    </div>
-                  ) : null}
-                  {invoice.fromGst || profile.gst ? (
-                    <div>
-                      <strong>GST:</strong> {invoice.fromGst || profile.gst}
-                    </div>
-                  ) : null}
+                  {invoice.fromEmail || profile.email ? <div><strong>Email:</strong> {invoice.fromEmail || profile.email}</div> : null}
+                  {invoice.fromPhone || profile.phone ? <div><strong>Phone:</strong> {invoice.fromPhone || profile.phone}</div> : null}
+                  {invoice.fromGst || profile.gst ? <div><strong>GST:</strong> {invoice.fromGst || profile.gst}</div> : null}
                 </div>
               </div>
             </div>
 
             <div className={invoicePreviewStyles.invoiceInfo}>
               <div className={invoicePreviewStyles.invoiceTitle}>INVOICE</div>
-              <div className={invoicePreviewStyles.invoiceNumber}>
-                #{invoice.invoiceNumber || invoice.id}
-              </div>
-
+              <div className={invoicePreviewStyles.invoiceNumber}>#{invoice.invoiceNumber || invoice.id}</div>
               <div className={invoicePreviewStyles.invoiceDetails}>
                 <div className={invoicePreviewStyles.invoiceDetailRow}>
-                  <span className={invoicePreviewStyles.invoiceDetailLabel}>
-                    Invoice Date:
-                  </span>
-                  <span className={invoicePreviewStyles.invoiceDetailValue}>
-                    {invoice.issueDate ? formatDate(invoice.issueDate) : "—"}
-                  </span>
+                  <span className={invoicePreviewStyles.invoiceDetailLabel}>Invoice Date:</span>
+                  <span className={invoicePreviewStyles.invoiceDetailValue}>{invoice.issueDate ? formatDate(invoice.issueDate) : "—"}</span>
                 </div>
                 <div className={invoicePreviewStyles.invoiceDetailRow}>
-                  <span className={invoicePreviewStyles.invoiceDetailLabel}>
-                    Due Date:
-                  </span>
-                  <span className={invoicePreviewStyles.invoiceDetailValue}>
-                    {invoice.dueDate ? formatDate(invoice.dueDate) : "—"}
-                  </span>
+                  <span className={invoicePreviewStyles.invoiceDetailLabel}>Due Date:</span>
+                  <span className={invoicePreviewStyles.invoiceDetailValue}>{invoice.dueDate ? formatDate(invoice.dueDate) : "—"}</span>
                 </div>
                 <div className={invoicePreviewStyles.invoiceDetailRow}>
-                  <span className={invoicePreviewStyles.invoiceDetailLabel}>
-                    Status:
-                  </span>
-                  <span
-                    className={`${invoicePreviewStyles.invoiceDetailValue} ${
-                      invoice.status === "paid"
-                        ? invoicePreviewStyles.statusPaid
-                        : invoice.status === "unpaid"
-                        ? invoicePreviewStyles.statusUnpaid
-                        : invoice.status === "overdue"
-                        ? invoicePreviewStyles.statusOverdue
-                        : invoicePreviewStyles.statusDraft
-                    }`}
-                  >
-                    {invoice.status
-                      ? invoice.status.charAt(0).toUpperCase() +
-                        invoice.status.slice(1)
-                      : "Draft"}
+                  <span className={invoicePreviewStyles.invoiceDetailLabel}>Status:</span>
+                  <span className={`${invoicePreviewStyles.invoiceDetailValue} ${
+                    invoice.status === "paid" ? invoicePreviewStyles.statusPaid
+                    : invoice.status === "unpaid" ? invoicePreviewStyles.statusUnpaid
+                    : invoice.status === "overdue" ? invoicePreviewStyles.statusOverdue
+                    : invoicePreviewStyles.statusDraft
+                  }`}>
+                    {invoice.status ? invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1) : "Draft"}
                   </span>
                 </div>
               </div>
@@ -658,39 +473,18 @@ const handlePayment = async () => {
               <div className="flex-1">
                 <div className={invoicePreviewStyles.billToLabel}>Bill To</div>
                 <div className={invoicePreviewStyles.clientDetails}>
-                  <div className={invoicePreviewStyles.clientName}>
-                    {client.name || "Client Name"}
-                  </div>
-                  {client.address && (
-                    <div className={invoicePreviewStyles.clientText}>
-                      {client.address}
-                    </div>
-                  )}
-                  {client.email && (
-                    <div className={invoicePreviewStyles.clientText}>
-                      {client.email}
-                    </div>
-                  )}
-                  {client.phone && (
-                    <div className={invoicePreviewStyles.clientText}>
-                      {client.phone}
-                    </div>
-                  )}
+                  <div className={invoicePreviewStyles.clientName}>{client.name || "Client Name"}</div>
+                  {client.address && <div className={invoicePreviewStyles.clientText}>{client.address}</div>}
+                  {client.email && <div className={invoicePreviewStyles.clientText}>{client.email}</div>}
+                  {client.phone && <div className={invoicePreviewStyles.clientText}>{client.phone}</div>}
                 </div>
               </div>
-
               <div className="flex-1">
-                <div className={invoicePreviewStyles.paymentDetailsLabel}>
-                  Payment Details
-                </div>
+                <div className={invoicePreviewStyles.paymentDetailsLabel}>Payment Details</div>
                 <div className={invoicePreviewStyles.paymentDetails}>
                   <div className={invoicePreviewStyles.paymentDetailRow}>
-                    <span className={invoicePreviewStyles.paymentDetailLabel}>
-                      Currency:
-                    </span>
-                    <span className={invoicePreviewStyles.paymentDetailValue}>
-                      {invoiceCurrency}
-                    </span>
+                    <span className={invoicePreviewStyles.paymentDetailLabel}>Currency:</span>
+                    <span className={invoicePreviewStyles.paymentDetailValue}>{invoiceCurrency}</span>
                   </div>
                 </div>
               </div>
@@ -703,67 +497,27 @@ const handlePayment = async () => {
               <table className={invoicePreviewStyles.table}>
                 <thead>
                   <tr>
-                    <th style={{ width: "50%", minWidth: "150px" }}>
-                      Description
-                    </th>
-                    <th
-                      style={{
-                        width: "15%",
-                        textAlign: "right",
-                        minWidth: "70px",
-                      }}
-                    >
-                      Quantity
-                    </th>
-                    <th
-                      style={{
-                        width: "20%",
-                        textAlign: "right",
-                        minWidth: "90px",
-                      }}
-                    >
-                      Unit Price
-                    </th>
-                    <th
-                      style={{
-                        width: "15%",
-                        textAlign: "right",
-                        minWidth: "80px",
-                      }}
-                    >
-                      Total
-                    </th>
+                    <th style={{ width: "50%", minWidth: "150px" }}>Description</th>
+                    <th style={{ width: "15%", textAlign: "right", minWidth: "70px" }}>Quantity</th>
+                    <th style={{ width: "20%", textAlign: "right", minWidth: "90px" }}>Unit Price</th>
+                    <th style={{ width: "15%", textAlign: "right", minWidth: "80px" }}>Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.length ? (
                     items.map((it, idx) => (
                       <tr key={it.id || idx}>
-                        <td className={invoicePreviewStyles.tableCell}>
-                          {it.description || "Item Description"}
-                        </td>
+                        <td className={invoicePreviewStyles.tableCell}>{it.description || "Item Description"}</td>
                         <td style={{ textAlign: "right" }}>{it.qty || 0}</td>
-                        <td style={{ textAlign: "right" }}>
-                          {currencyFmt(it.unitPrice, invoiceCurrency)}
-                        </td>
+                        <td style={{ textAlign: "right" }}>{currencyFmt(it.unitPrice, invoiceCurrency)}</td>
                         <td style={{ textAlign: "right", fontWeight: "600" }}>
-                          {currencyFmt(
-                            Number(it.qty || 0) * Number(it.unitPrice || 0),
-                            invoiceCurrency
-                          )}
+                          {currencyFmt(Number(it.qty || 0) * Number(it.unitPrice || 0), invoiceCurrency)}
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td
-                        colSpan="4"
-                        style={{
-                          textAlign: "center",
-                          padding: "20px",
-                          color: "#6b7280",
-                        }}
-                      >
+                      <td colSpan="4" style={{ textAlign: "center", padding: "20px", color: "#6b7280" }}>
                         No items added to this invoice
                       </td>
                     </tr>
@@ -777,9 +531,7 @@ const handlePayment = async () => {
           {invoice.notes && (
             <div className={invoicePreviewStyles.section}>
               <div className={invoicePreviewStyles.notesLabel}>Notes</div>
-              <div className={invoicePreviewStyles.notesContent}>
-                {invoice.notes}
-              </div>
+              <div className={invoicePreviewStyles.notesContent}>{invoice.notes}</div>
             </div>
           )}
 
@@ -787,56 +539,30 @@ const handlePayment = async () => {
           <div className={invoicePreviewStyles.section}>
             <div className={invoicePreviewStyles.flexContainer}>
               <div className="flex-1">
-                <div className={invoicePreviewStyles.signatureLabel}>
-                  Authorized Signature
-                </div>
+                <div className={invoicePreviewStyles.signatureLabel}>Authorized Signature</div>
                 {signature ? (
                   <div className={invoicePreviewStyles.signatureContainer}>
-                    <img
-                      src={signature}
-                      alt="Authorized Signature"
-                      className={invoicePreviewStyles.signatureImage}
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
+                    <img src={signature} alt="Authorized Signature" className={invoicePreviewStyles.signatureImage}
+                      onError={(e) => { e.currentTarget.style.display = "none"; }} />
                     {(signatureName || signatureTitle) && (
                       <div className="mt-2 text-sm text-gray-700">
-                        <div className={invoicePreviewStyles.signatureName}>
-                          {signatureName}
-                        </div>
-                        {signatureTitle && (
-                          <div className={invoicePreviewStyles.signatureTitle}>
-                            {signatureTitle}
-                          </div>
-                        )}
+                        <div className={invoicePreviewStyles.signatureName}>{signatureName}</div>
+                        {signatureTitle && <div className={invoicePreviewStyles.signatureTitle}>{signatureTitle}</div>}
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className={invoicePreviewStyles.placeholderContainer}>
-                    No Signature
-                  </div>
+                  <div className={invoicePreviewStyles.placeholderContainer}>No Signature</div>
                 )}
               </div>
 
               <div className="flex-1 text-center">
-                <div className={invoicePreviewStyles.stampLabel}>
-                  Company Stamp
-                </div>
+                <div className={invoicePreviewStyles.stampLabel}>Company Stamp</div>
                 {stamp ? (
-                  <img
-                    src={stamp}
-                    alt="Company Stamp"
-                    className={invoicePreviewStyles.stampImage}
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                    }}
-                  />
+                  <img src={stamp} alt="Company Stamp" className={invoicePreviewStyles.stampImage}
+                    onError={(e) => { e.currentTarget.style.display = "none"; }} />
                 ) : (
-                  <div className={invoicePreviewStyles.placeholderContainer}>
-                    No Stamp
-                  </div>
+                  <div className={invoicePreviewStyles.placeholderContainer}>No Stamp</div>
                 )}
               </div>
 
@@ -844,30 +570,32 @@ const handlePayment = async () => {
                 <div className={invoicePreviewStyles.totalsContainer}>
                   <div className="space-y-2">
                     <div className={invoicePreviewStyles.totalsRow}>
-                      <span className={invoicePreviewStyles.totalsLabel}>
-                        Subtotal
-                      </span>
-                      <span className={invoicePreviewStyles.totalsValue}>
-                        {currencyFmt(subtotal, invoiceCurrency)}
-                      </span>
+                      <span className={invoicePreviewStyles.totalsLabel}>Subtotal</span>
+                      <span className={invoicePreviewStyles.totalsValue}>{currencyFmt(subtotal, invoiceCurrency)}</span>
                     </div>
                     <div className={invoicePreviewStyles.totalsRow}>
-                      <span className={invoicePreviewStyles.totalsLabel}>
-                        Tax ({taxPercent}%)
-                      </span>
-                      <span className={invoicePreviewStyles.totalsValue}>
-                        {currencyFmt(tax, invoiceCurrency)}
-                      </span>
+                      <span className={invoicePreviewStyles.totalsLabel}>Tax ({taxPercent}%)</span>
+                      <span className={invoicePreviewStyles.totalsValue}>{currencyFmt(tax, invoiceCurrency)}</span>
                     </div>
                     <div className={invoicePreviewStyles.totalDivider}>
                       <div className={invoicePreviewStyles.totalsRow}>
-                        <span className={invoicePreviewStyles.totalAmountLabel}>
-                          Total Amount
-                        </span>
-                        <span className={invoicePreviewStyles.totalAmountValue}>
-                          {currencyFmt(total, invoiceCurrency)}
-                        </span>
+                        <span className={invoicePreviewStyles.totalAmountLabel}>Total Amount</span>
+                        <span className={invoicePreviewStyles.totalAmountValue}>{currencyFmt(total, invoiceCurrency)}</span>
                       </div>
+
+                      {/* ✅ Show paid & remaining if partially paid */}
+                      {invoice.paidAmount > 0 && (
+                        <>
+                          <div className={invoicePreviewStyles.totalsRow}>
+                            <span className="text-green-600 font-medium">Paid Amount</span>
+                            <span className="text-green-600 font-semibold">{currencyFmt(invoice.paidAmount, invoiceCurrency)}</span>
+                          </div>
+                          <div className={invoicePreviewStyles.totalsRow}>
+                            <span className="text-red-600 font-medium">Remaining Amount</span>
+                            <span className="text-red-600 font-semibold">{currencyFmt(invoice.remainingAmount, invoiceCurrency)}</span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -878,9 +606,7 @@ const handlePayment = async () => {
           {/* Footer */}
           <div className={invoicePreviewStyles.footer}>
             <div className={invoicePreviewStyles.footerText}>
-              {invoice.terms ||
-                invoice.footnote ||
-                "Thank you for your business. We appreciate your trust in our services."}
+              {invoice.terms || invoice.footnote || "Thank you for your business. We appreciate your trust in our services."}
             </div>
             <div className={invoicePreviewStyles.footerSubText}>
               Invoice generated by InvoiceAI • {formatDate(new Date())}
