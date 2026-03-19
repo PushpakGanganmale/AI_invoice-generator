@@ -375,7 +375,7 @@ const handlePayment = async () => {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        invoiceId: invoice._id || invoice.id, // FIXED HERE
+        invoiceId: invoice._id || invoice.id,
       }),
     });
 
@@ -383,18 +383,19 @@ const handlePayment = async () => {
 
     if (!data?.success || !data?.order) {
       console.error("Invalid order response", data);
-      alert("Payment initialization failed");
+      alert(data?.message || "Payment initialization failed");
       return;
     }
 
     const order = data.order;
+    const remainingAmount = data.remainingAmount; // ✅ use remaining amount from backend
 
     const options = {
       key: "rzp_live_SPnxCBbAompnt1",
-      amount: order.amount,
+      amount: order.amount, // already correct paise from backend
       currency: "INR",
       name: "Invoice Genius",
-      description: "Invoice Payment",
+      description: `Invoice Payment - Remaining: ₹${remainingAmount}`, // ✅ shows correct amount
       order_id: order.id,
 
       handler: async function (response) {
@@ -407,8 +408,8 @@ const handlePayment = async () => {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            invoiceId: invoice._id || invoice.id, // FIXED HERE
-            amount: order.amount / 100,
+            invoiceId: invoice._id || invoice.id,
+            amount: remainingAmount, // ✅ FIXED: send actual remaining amount not order.amount/100
           }),
         });
 
