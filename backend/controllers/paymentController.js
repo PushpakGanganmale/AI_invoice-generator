@@ -28,20 +28,24 @@ export const createOrder = async (req, res) => {
       });
     }
 
-    /* -------- CALCULATE PAYMENT AMOUNT -------- */
+    /* -------- BLOCK IF ALREADY FULLY PAID -------- */
 
-    let amount = invoice.remainingAmount || invoice.total;
-
-    if (!amount || amount <= 0) {
-      const subtotal = (invoice.items || []).reduce(
-        (sum, item) => sum + (item.qty || 0) * (item.unitPrice || 0),
-        0
-      );
-
-      const tax = (subtotal * (invoice.taxPercent || 0)) / 100;
-
-      amount = subtotal + tax;
+    if (invoice.status === "paid") {
+      return res.status(400).json({
+        success: false,
+        message: "Invoice is already fully paid",
+      });
     }
+
+    /* -------- CALCULATE CORRECT REMAINING AMOUNT -------- */
+
+    // Always calculate fresh from total - paidAmount
+    const correctRemaining = Math.max(
+      (invoice.total || 0) - (invoice.paidAmount || 0),
+      0
+    );
+
+    const amount = correctRemaining > 0 ? correctRemaining : invoice.total;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({
@@ -61,6 +65,7 @@ export const createOrder = async (req, res) => {
     res.json({
       success: true,
       order,
+      remainingAmount: amount, // ✅ send to frontend so it knows exact amount
     });
 
   } catch (error) {
@@ -95,19 +100,20 @@ export const updatePayment = async (req, res) => {
       });
     }
 
-    invoice.paidAmount = (invoice.paidAmount || 0) + Number(amount);
+    /* -------- BLOCK IF ALREADY FULLY PAID -------- */
 
-    invoice.remainingAmount = Math.max(
-      invoice.total - invoice.paidAmount,
-      0
-    );
-
-    if (invoice.remainingAmount <= 0) {
-      invoice.status = "paid";
-    } else {
-      invoice.status = "partially_paid";
+    if (invoice.status === "paid") {
+      return res.status(400).json({
+        success: false,
+        message: "Invoice is already fully paid",
+      });
     }
 
+    /* -------- UPDATE PAID AMOUNT -------- */
+
+    invoice.paidAmount = (invoice.paidAmount || 0) + Number(amount);
+
+    // pre("save") hook will auto-calculate remainingAmount and status
     await invoice.save();
 
     res.json({
