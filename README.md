@@ -1,4 +1,4 @@
-# 🚀 AI Invoice Generator using MERN + Razorpay + AI
+#  AI Invoice Generator using MERN + Razorpay + AI
 
 ---
 
