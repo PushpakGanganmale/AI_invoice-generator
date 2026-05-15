@@ -277,6 +277,6 @@ GitHub
 https://github.com/PushpakGanganmale
 
 LinkedIn  
-https://www.linkedin.com/in/pushpak-ganganmale-187814219/
+https://www.linkedin.com/in/pushpakganganmale/
 
 ---
