@@ -6,53 +6,98 @@ dotenv.config();
 
 const router = express.Router();
 
+/* =========================================================
+   GROQ
+========================================================= */
+
+if (!process.env.GROQ_API_KEY) {
+  console.warn("WARNING: GROQ_API_KEY is not configured");
+}
+
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
+
+/* =========================================================
+   POST /generate
+========================================================= */
 
 router.post("/generate", async (req, res) => {
   try {
     const { prompt } = req.body;
 
-    if (!prompt) {
+    /* -----------------------------------------------------
+       VALIDATE PROMPT
+    ----------------------------------------------------- */
+
+    if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
       return res.status(400).json({
         success: false,
         message: "Prompt is required",
       });
     }
 
+    /* -----------------------------------------------------
+       AI PROMPT
+    ----------------------------------------------------- */
+
     const userPrompt = `
-Extract structured invoice data from the input.
+You are an invoice data extraction system.
 
-Return ONLY valid JSON. No explanation.
+Convert the user's natural-language invoice request into structured invoice data.
 
-Strict rules:
-- Extract item name separately (NOT full sentence)
-- Extract quantity and unitPrice correctly
-- NEVER put full input in description
-- Split multiple items
+Return ONLY valid JSON.
 
-Schema:
+Do not return:
+- Markdown
+- Code blocks
+- Explanations
+- Comments
+- Extra text
+
+Return EXACTLY this structure:
+
 {
-  "client":{
-    "name":"",
-    "email":"",
-    "address":"",
-    "phone":""
+  "client": {
+    "name": "",
+    "email": "",
+    "address": "",
+    "phone": ""
   },
-  "items":[
+  "items": [
     {
-      "description":"",
-      "qty":1,
-      "unitPrice":0
+      "description": "",
+      "qty": 1,
+      "unitPrice": 0
     }
-  ]
+  ],
+  "taxPercent": 18
 }
 
-Example 1:
+RULES:
+
+1. Extract the customer's/client's name if provided.
+2. Extract email if provided.
+3. Extract phone number if provided.
+4. Extract address if provided.
+5. Extract every product or service separately.
+6. Never put the entire user sentence into "description".
+7. "description" should contain only the product/service name.
+8. Extract quantity into "qty".
+9. Extract the price PER UNIT into "unitPrice".
+10. If "each" is used, the stated price is the unit price.
+11. If quantity is not provided, use 1.
+12. If unit price is not provided, use 0.
+13. Do not calculate the total yourself.
+14. Do not invent missing customer information.
+15. Use numbers for qty, unitPrice, and taxPercent.
+16. Use 18 for taxPercent unless the user explicitly specifies another tax percentage.
+17. If multiple products are mentioned, create separate items.
+
+EXAMPLE 1:
 
 Input:
-"2 laptops 50000 each for Rahul Sharma"
+2 laptops 50000 each for Rahul Sharma
 
 Output:
 {
@@ -68,13 +113,14 @@ Output:
       "qty": 2,
       "unitPrice": 50000
     }
-  ]
+  ],
+  "taxPercent": 18
 }
 
-Example 2:
+EXAMPLE 2:
 
 Input:
-"3 chairs 2000 each and 2 tables 5000 each for Amit"
+3 chairs 2000 each and 2 tables 5000 each for Amit
 
 Output:
 {
@@ -95,82 +141,263 @@ Output:
       "qty": 2,
       "unitPrice": 5000
     }
-  ]
+  ],
+  "taxPercent": 18
 }
 
-Now process:
+EXAMPLE 3:
+
+Input:
+Create invoice for John, 5 website development services at 10000 each. Email john@gmail.com
+
+Output:
+{
+  "client": {
+    "name": "John",
+    "email": "john@gmail.com",
+    "address": "",
+    "phone": ""
+  },
+  "items": [
+    {
+      "description": "Website development service",
+      "qty": 5,
+      "unitPrice": 10000
+    }
+  ],
+  "taxPercent": 18
+}
+
+EXAMPLE 4:
+
+Input:
+Invoice for ABC Company, 10 shirts at 800 each, 5 shoes at 2000 each, GST 12%
+
+Output:
+{
+  "client": {
+    "name": "ABC Company",
+    "email": "",
+    "address": "",
+    "phone": ""
+  },
+  "items": [
+    {
+      "description": "Shirt",
+      "qty": 10,
+      "unitPrice": 800
+    },
+    {
+      "description": "Shoes",
+      "qty": 5,
+      "unitPrice": 2000
+    }
+  ],
+  "taxPercent": 12
+}
+
+USER INPUT:
 
 ${prompt}
 `;
 
+    /* -----------------------------------------------------
+       CALL GROQ
+    ----------------------------------------------------- */
+
     const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile", // ✅ FIXED: updated from deprecated llama-3.1-70b-versatile
+      model: "llama-3.3-70b-versatile",
+
       messages: [
         {
           role: "system",
           content:
-            "You are a strict JSON generator. Always return only valid JSON. Never include explanations.",
+            "You are a strict invoice data extraction API. Return only valid JSON.",
         },
         {
           role: "user",
           content: userPrompt,
         },
       ],
+
       temperature: 0,
+
+      response_format: {
+        type: "json_object",
+      },
     });
 
-    const text = completion.choices[0]?.message?.content || "";
+    /* -----------------------------------------------------
+       GET AI RESPONSE
+    ----------------------------------------------------- */
 
-    console.log("RAW AI OUTPUT:", text);
+    const text = completion.choices?.[0]?.message?.content?.trim() || "";
 
-    const clean = text
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
-      .replace(/^[^{]*/, "")
-      .replace(/[^}]*$/, "")
-      .trim();
+    console.log("=================================");
+    console.log("RAW AI OUTPUT");
+    console.log("=================================");
+    console.log(text);
+
+    if (!text) {
+      return res.status(500).json({
+        success: false,
+        message: "AI returned an empty response",
+      });
+    }
+
+    /* -----------------------------------------------------
+       PARSE JSON
+    ----------------------------------------------------- */
 
     let parsed;
 
     try {
-      parsed = JSON.parse(clean);
-    } catch (err) {
-      console.error("JSON PARSE ERROR:", clean);
+      parsed = JSON.parse(text);
+    } catch (error) {
+      console.error("JSON PARSE ERROR:", error);
+      console.error("RAW AI RESPONSE:", text);
 
       return res.status(500).json({
         success: false,
-        message: "Invalid JSON returned by AI",
+        message: "AI returned invalid JSON",
         raw: text,
       });
     }
 
-    const subtotal = parsed.items.reduce(
+    /* -----------------------------------------------------
+       NORMALIZE CLIENT
+    ----------------------------------------------------- */
+
+    const client = {
+      name:
+        typeof parsed.client?.name === "string"
+          ? parsed.client.name.trim()
+          : "",
+
+      email:
+        typeof parsed.client?.email === "string"
+          ? parsed.client.email.trim()
+          : "",
+
+      address:
+        typeof parsed.client?.address === "string"
+          ? parsed.client.address.trim()
+          : "",
+
+      phone:
+        typeof parsed.client?.phone === "string"
+          ? parsed.client.phone.trim()
+          : "",
+    };
+
+    /* -----------------------------------------------------
+       NORMALIZE ITEMS
+    ----------------------------------------------------- */
+
+    if (!Array.isArray(parsed.items)) {
+      return res.status(400).json({
+        success: false,
+        message: "AI could not identify invoice items",
+      });
+    }
+
+    const items = parsed.items
+      .map((item) => {
+        return {
+          description:
+            typeof item.description === "string"
+              ? item.description.trim()
+              : "",
+
+          qty: Number(item.qty) || 1,
+
+          unitPrice: Number(item.unitPrice) || 0,
+        };
+      })
+      .filter((item) => item.description);
+
+    /* -----------------------------------------------------
+       CHECK ITEMS
+    ----------------------------------------------------- */
+
+    if (items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No valid invoice items were found",
+      });
+    }
+
+    /* -----------------------------------------------------
+       TAX
+    ----------------------------------------------------- */
+
+    let taxPercent = Number(parsed.taxPercent);
+
+    if (Number.isNaN(taxPercent) || taxPercent < 0) {
+      taxPercent = 18;
+    }
+
+    /* -----------------------------------------------------
+       CALCULATE TOTALS
+       Same structure as your invoice controller
+    ----------------------------------------------------- */
+
+    const subtotal = items.reduce(
       (sum, item) => sum + item.qty * item.unitPrice,
       0
     );
 
-    const taxRate = 18;
-    const taxAmount = (subtotal * taxRate) / 100;
-    const total = subtotal + taxAmount;
+    const tax = (subtotal * taxPercent) / 100;
 
-    return res.json({
+    const total = subtotal + tax;
+
+    /* -----------------------------------------------------
+       FINAL RESPONSE
+    ----------------------------------------------------- */
+
+    return res.status(200).json({
       success: true,
+
       data: {
-        ...parsed,
-        subtotal,
-        taxRate,
-        taxAmount,
-        total,
+        client,
+
+        items,
+
+        taxPercent,
+
+        subtotal: Number(subtotal.toFixed(2)),
+
+        tax: Number(tax.toFixed(2)),
+
+        total: Number(total.toFixed(2)),
       },
     });
   } catch (err) {
-    console.error("AI ERROR:", err);
+    /* -----------------------------------------------------
+       ERROR HANDLING
+    ----------------------------------------------------- */
+
+    console.error("=================================");
+    console.error("AI INVOICE GENERATION ERROR");
+    console.error("=================================");
+
+    console.error("Message:", err.message);
+    console.error("Status:", err.status);
+    console.error("Code:", err.code);
+    console.error("Type:", err.type);
+    console.error("Full error:", err);
 
     return res.status(500).json({
       success: false,
-      message: "Something went wrong in AI generation",
+      message: err.message || "Something went wrong in AI generation",
+      status: err.status || 500,
+      code: err.code || null,
     });
   }
 });
+
+/* =========================================================
+   EXPORT
+========================================================= */
 
 export default router;
