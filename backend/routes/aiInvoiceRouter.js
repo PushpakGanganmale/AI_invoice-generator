@@ -7,7 +7,7 @@ dotenv.config();
 const router = express.Router();
 
 /* =========================================================
-   GROQ
+   GROQ CONFIGURATION
 ========================================================= */
 
 if (!process.env.GROQ_API_KEY) {
@@ -27,7 +27,7 @@ router.post("/generate", async (req, res) => {
     const { prompt } = req.body;
 
     /* -----------------------------------------------------
-       VALIDATE PROMPT
+       VALIDATE INPUT
     ----------------------------------------------------- */
 
     if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
@@ -48,7 +48,7 @@ Convert the user's natural-language invoice request into structured invoice data
 
 Return ONLY valid JSON.
 
-Do not return:
+Do NOT return:
 - Markdown
 - Code blocks
 - Explanations
@@ -76,23 +76,25 @@ Return EXACTLY this structure:
 
 RULES:
 
-1. Extract the customer's/client's name if provided.
+1. Extract the customer/client name if provided.
 2. Extract email if provided.
 3. Extract phone number if provided.
 4. Extract address if provided.
 5. Extract every product or service separately.
 6. Never put the entire user sentence into "description".
-7. "description" should contain only the product/service name.
+7. "description" must contain only the product or service name.
 8. Extract quantity into "qty".
-9. Extract the price PER UNIT into "unitPrice".
-10. If "each" is used, the stated price is the unit price.
+9. Extract price PER UNIT into "unitPrice".
+10. If the user says "each", the stated price is the unit price.
 11. If quantity is not provided, use 1.
-12. If unit price is not provided, use 0.
-13. Do not calculate the total yourself.
-14. Do not invent missing customer information.
-15. Use numbers for qty, unitPrice, and taxPercent.
+12. If price is not provided, use 0.
+13. Do not invent missing information.
+14. Do not calculate subtotal or total.
+15. Use numbers for qty, unitPrice and taxPercent.
 16. Use 18 for taxPercent unless the user explicitly specifies another tax percentage.
-17. If multiple products are mentioned, create separate items.
+17. If multiple products/services are mentioned, create separate items.
+18. Preserve the meaning of the user's request.
+19. Do not include currency symbols inside numeric values.
 
 EXAMPLE 1:
 
@@ -196,7 +198,7 @@ Output:
   "taxPercent": 12
 }
 
-USER INPUT:
+NOW PROCESS THIS USER INPUT:
 
 ${prompt}
 `;
@@ -206,7 +208,7 @@ ${prompt}
     ----------------------------------------------------- */
 
     const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+      model: "openai/gpt-oss-20b",
 
       messages: [
         {
@@ -231,7 +233,8 @@ ${prompt}
        GET AI RESPONSE
     ----------------------------------------------------- */
 
-    const text = completion.choices?.[0]?.message?.content?.trim() || "";
+    const text =
+      completion.choices?.[0]?.message?.content?.trim() || "";
 
     console.log("=================================");
     console.log("RAW AI OUTPUT");
@@ -291,7 +294,7 @@ ${prompt}
     };
 
     /* -----------------------------------------------------
-       NORMALIZE ITEMS
+       VALIDATE ITEMS
     ----------------------------------------------------- */
 
     if (!Array.isArray(parsed.items)) {
@@ -303,22 +306,27 @@ ${prompt}
 
     const items = parsed.items
       .map((item) => {
+        const qty = Number(item.qty);
+        const unitPrice = Number(item.unitPrice);
+
         return {
           description:
             typeof item.description === "string"
               ? item.description.trim()
               : "",
 
-          qty: Number(item.qty) || 1,
+          qty:
+            Number.isFinite(qty) && qty > 0
+              ? qty
+              : 1,
 
-          unitPrice: Number(item.unitPrice) || 0,
+          unitPrice:
+            Number.isFinite(unitPrice) && unitPrice >= 0
+              ? unitPrice
+              : 0,
         };
       })
       .filter((item) => item.description);
-
-    /* -----------------------------------------------------
-       CHECK ITEMS
-    ----------------------------------------------------- */
 
     if (items.length === 0) {
       return res.status(400).json({
@@ -333,21 +341,25 @@ ${prompt}
 
     let taxPercent = Number(parsed.taxPercent);
 
-    if (Number.isNaN(taxPercent) || taxPercent < 0) {
+    if (
+      !Number.isFinite(taxPercent) ||
+      taxPercent < 0
+    ) {
       taxPercent = 18;
     }
 
     /* -----------------------------------------------------
        CALCULATE TOTALS
-       Same structure as your invoice controller
     ----------------------------------------------------- */
 
     const subtotal = items.reduce(
-      (sum, item) => sum + item.qty * item.unitPrice,
+      (sum, item) =>
+        sum + item.qty * item.unitPrice,
       0
     );
 
-    const tax = (subtotal * taxPercent) / 100;
+    const tax =
+      (subtotal * taxPercent) / 100;
 
     const total = subtotal + tax;
 
@@ -365,31 +377,66 @@ ${prompt}
 
         taxPercent,
 
-        subtotal: Number(subtotal.toFixed(2)),
+        subtotal: Number(
+          subtotal.toFixed(2)
+        ),
 
-        tax: Number(tax.toFixed(2)),
+        tax: Number(
+          tax.toFixed(2)
+        ),
 
-        total: Number(total.toFixed(2)),
+        total: Number(
+          total.toFixed(2)
+        ),
       },
     });
   } catch (err) {
     /* -----------------------------------------------------
-       ERROR HANDLING
+       ERROR LOGGING
     ----------------------------------------------------- */
 
-    console.error("=================================");
-    console.error("AI INVOICE GENERATION ERROR");
-    console.error("=================================");
+    console.error(
+      "================================="
+    );
 
-    console.error("Message:", err.message);
-    console.error("Status:", err.status);
-    console.error("Code:", err.code);
-    console.error("Type:", err.type);
-    console.error("Full error:", err);
+    console.error(
+      "AI INVOICE GENERATION ERROR"
+    );
+
+    console.error(
+      "================================="
+    );
+
+    console.error(
+      "Message:",
+      err.message
+    );
+
+    console.error(
+      "Status:",
+      err.status
+    );
+
+    console.error(
+      "Code:",
+      err.code
+    );
+
+    console.error(
+      "Type:",
+      err.type
+    );
+
+    console.error(
+      "Full error:",
+      err
+    );
 
     return res.status(500).json({
       success: false,
-      message: err.message || "Something went wrong in AI generation",
+      message:
+        err.message ||
+        "Something went wrong in AI generation",
       status: err.status || 500,
       code: err.code || null,
     });
